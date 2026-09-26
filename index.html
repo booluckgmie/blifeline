@@ -1,0 +1,1708 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>BLifeline Malaysia</title>
+<meta name="description" content="Blood supply days-of-stock and ICU vulnerability across Malaysian states, with a surge simulator and architecture inspector.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Sora:wght@500;600;700&family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap">
+<script src="https://cdn.tailwindcss.com/3.4.16"></script>
+<script>
+  if (window.tailwind) tailwind.config = {
+    theme: {
+      extend: {
+        fontFamily: {
+          display: ["Sora", "Manrope", "system-ui", "sans-serif"],
+          sans: ["Manrope", "system-ui", "-apple-system", "Segoe UI", "sans-serif"],
+          mono: ["JetBrains Mono", "ui-monospace", "SFMono-Regular", "monospace"]
+        }
+      }
+    }
+  };
+</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/js/all.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  /* Deliberately dark-only (glassmorphism brief). Every colour is a token. */
+  :root {
+    color-scheme: dark;
+    --bg: #060a11;
+    --bg-2: #0b1320;
+    --glass: rgba(148, 178, 222, 0.055);
+    --glass-strong: rgba(148, 178, 222, 0.09);
+    --glass-line: rgba(172, 198, 236, 0.12);
+    --glass-line-strong: rgba(172, 198, 236, 0.22);
+    --ink: #e8eef7;
+    --ink-2: #aab6c8;
+    --ink-3: #75839a;
+    --accent: #5ee6d0;          /* ICU-monitor trace */
+    --accent-ink: #04231f;
+    --plasma: #e0485b;          /* brand drop */
+    --critical: #ff5c63;
+    --low: #f2c14e;
+    --adequate: #8fa3bf;
+    --healthy: #3fd18f;
+    --g-a: #3987e5;
+    --g-b: #d95926;
+    --g-o: #199e70;
+    --g-ab: #9085e9;
+    --map-land: #14253b;
+    --map-edge: #2e4b6e;
+  }
+  html, body { min-height: 100%; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: "Manrope", system-ui, -apple-system, "Segoe UI", sans-serif;
+    -webkit-font-smoothing: antialiased;
+    overflow-x: hidden;
+  }
+  /* Ambient field behind the glass */
+  .aurora { position: fixed; inset: 0; z-index: 0; pointer-events: none; overflow: hidden; }
+  .aurora::before, .aurora::after, .aurora span {
+    content: ""; position: absolute; border-radius: 50%; filter: blur(90px); opacity: 0.5;
+  }
+  .aurora::before { width: 46vw; height: 46vw; left: -12vw; top: -14vw; background: radial-gradient(circle, rgba(224,72,91,0.38), transparent 65%); }
+  .aurora::after { width: 52vw; height: 52vw; right: -16vw; top: 18vh; background: radial-gradient(circle, rgba(57,135,229,0.30), transparent 65%); }
+  .aurora span { width: 40vw; height: 40vw; left: 30vw; bottom: -18vw; background: radial-gradient(circle, rgba(94,230,208,0.20), transparent 65%); }
+  .grain { position: fixed; inset: 0; z-index: 0; pointer-events: none; opacity: 0.35;
+    background-image: linear-gradient(rgba(172,198,236,0.035) 1px, transparent 1px), linear-gradient(90deg, rgba(172,198,236,0.035) 1px, transparent 1px);
+    background-size: 44px 44px; mask-image: radial-gradient(ellipse at 50% 20%, black 30%, transparent 75%); }
+
+  .shell { position: relative; z-index: 1; max-width: 1480px; margin: 0 auto; padding-inline: 16px; padding-block: 0 32px; }
+  @media (min-width: 768px) { .shell { padding-inline: 28px; } }
+
+  .glass {
+    background: linear-gradient(160deg, var(--glass-strong), var(--glass));
+    border: 1px solid var(--glass-line);
+    border-radius: 18px;
+    backdrop-filter: blur(18px) saturate(140%);
+    -webkit-backdrop-filter: blur(18px) saturate(140%);
+    box-shadow: 0 1px 0 rgba(255,255,255,0.05) inset, 0 20px 50px -30px rgba(0,0,0,0.8);
+  }
+  .glass-flat { background: var(--glass); border: 1px solid var(--glass-line); border-radius: 12px; }
+
+  .display { font-family: "Sora", "Manrope", system-ui, sans-serif; letter-spacing: -0.02em; text-wrap: balance; }
+  .mono { font-family: "JetBrains Mono", ui-monospace, monospace; font-variant-numeric: tabular-nums; }
+  .eyebrow { font-size: 0.68rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--ink-3); font-weight: 600; }
+  .ink-2 { color: var(--ink-2); }
+  .ink-3 { color: var(--ink-3); }
+
+  .topbar { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 30; }
+  .topbar-inner { background: rgba(6,10,17,0.72); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); border-bottom: 1px solid var(--glass-line); }
+
+  /* Controls */
+  .ctl-select {
+    appearance: none; -webkit-appearance: none;
+    background: rgba(6,10,17,0.6) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%23aab6c8' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E") no-repeat right 12px center;
+    color: var(--ink); border: 1px solid var(--glass-line-strong); border-radius: 10px;
+    padding: 8px 32px 8px 12px; font: 600 0.84rem "Manrope", system-ui, sans-serif; min-height: 40px; max-width: 100%;
+  }
+  .ctl-select option { background: #0b1320; color: var(--ink); }
+  .seg { display: inline-flex; padding: 3px; gap: 3px; border-radius: 12px; background: rgba(6,10,17,0.6); border: 1px solid var(--glass-line-strong); flex-wrap: wrap; }
+  .seg button {
+    font: 700 0.82rem "JetBrains Mono", monospace; color: var(--ink-2); border-radius: 9px; padding: 6px 12px; min-height: 34px; min-width: 44px;
+    display: inline-flex; align-items: center; justify-content: center; gap: 6px; transition: background .15s, color .15s;
+  }
+  .seg button:hover { color: var(--ink); background: rgba(255,255,255,0.05); }
+  .seg button[aria-pressed="true"] { background: var(--glass-line-strong); color: var(--ink); box-shadow: 0 0 0 1px rgba(255,255,255,0.08) inset; }
+  .seg .sw { width: 8px; height: 8px; border-radius: 2px; display: inline-block; }
+  .btn {
+    display: inline-flex; align-items: center; gap: 8px; border-radius: 10px; padding: 8px 14px; min-height: 40px;
+    font: 700 0.82rem "Manrope", system-ui, sans-serif; border: 1px solid var(--glass-line-strong); color: var(--ink);
+    background: rgba(255,255,255,0.04); transition: border-color .15s, background .15s; white-space: nowrap;
+  }
+  .btn:hover { border-color: rgba(94,230,208,0.55); background: rgba(94,230,208,0.08); }
+  .btn-accent { background: var(--accent); color: var(--accent-ink); border-color: transparent; }
+  .btn-accent:hover { background: #86efdd; border-color: transparent; }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  input[type="range"].rng { -webkit-appearance: none; appearance: none; width: 100%; height: 26px; background: transparent; cursor: pointer; }
+  input[type="range"].rng::-webkit-slider-runnable-track { height: 6px; border-radius: 6px; background: linear-gradient(90deg, var(--accent) var(--p, 0%), rgba(172,198,236,0.16) var(--p, 0%)); }
+  input[type="range"].rng::-moz-range-track { height: 6px; border-radius: 6px; background: rgba(172,198,236,0.16); }
+  input[type="range"].rng::-moz-range-progress { height: 6px; border-radius: 6px; background: var(--accent); }
+  input[type="range"].rng::-webkit-slider-thumb { -webkit-appearance: none; width: 18px; height: 18px; margin-top: -6px; border-radius: 50%; background: #e8eef7; border: 3px solid var(--accent); box-shadow: 0 0 0 4px rgba(94,230,208,0.15); }
+  input[type="range"].rng::-moz-range-thumb { width: 14px; height: 14px; border-radius: 50%; background: #e8eef7; border: 3px solid var(--accent); }
+  input[type="range"].rng:disabled { opacity: 0.35; cursor: not-allowed; }
+
+  /* KPI tiles */
+  .kpi-val { font-family: "JetBrains Mono", monospace; font-variant-numeric: tabular-nums; font-weight: 600; font-size: 1.55rem; line-height: 1.1; letter-spacing: -0.02em; }
+  @media (max-width: 640px) { .kpi-val { font-size: 1.25rem; } }
+
+  .pill { display: inline-flex; align-items: center; gap: 5px; padding: 2px 9px; border-radius: 999px; font-size: 0.7rem; font-weight: 700; white-space: nowrap; }
+  .pill-critical { background: rgba(255,92,99,0.14); color: var(--critical); }
+  .pill-low { background: rgba(242,193,78,0.14); color: var(--low); }
+  .pill-adequate { background: rgba(143,163,191,0.16); color: var(--adequate); }
+  .pill-healthy { background: rgba(63,209,143,0.14); color: var(--healthy); }
+
+  .chart-box { position: relative; width: 100%; }
+
+  /* Map */
+  .map-wrap { background: radial-gradient(ellipse at 30% 30%, #0e1c2e, #08111d); border-radius: 14px; overflow: hidden; border: 1px solid var(--glass-line); position: relative; }
+  svg#map { display: block; width: 100%; height: auto; }
+  #mapLayer { transition: transform 0.7s cubic-bezier(.2,.8,.2,1); }
+  .land { fill: var(--map-land); stroke: var(--map-edge); stroke-width: 0.8; }
+  .gridl { stroke: rgba(94,230,208,0.07); stroke-width: 0.6; }
+  .maplabel { fill: #5f7894; font: 500 10px "JetBrains Mono", monospace; letter-spacing: 0.08em; }
+  .hnode { cursor: pointer; }
+  .hnode circle.dot { transition: r .3s ease, opacity .3s ease; }
+  .hnode:hover circle.dot, .hnode:focus circle.dot { stroke: #fff; stroke-width: 1.6; }
+  .pulse { transform-box: fill-box; transform-origin: center; animation: pulse 2.2s ease-out infinite; }
+  @keyframes pulse { 0% { opacity: 0.55; transform: scale(1); } 100% { opacity: 0; transform: scale(2.6); } }
+  .map-tip { position: absolute; pointer-events: none; z-index: 5; min-width: 180px; max-width: 240px; padding: 9px 11px; border-radius: 10px; font-size: 0.75rem; line-height: 1.45;
+    background: rgba(8,14,24,0.92); border: 1px solid var(--glass-line-strong); color: var(--ink); opacity: 0; transition: opacity .12s; }
+  .map-tip.show { opacity: 1; }
+
+  /* Recommendations */
+  .rec { display: grid; grid-template-columns: 34px 1fr; gap: 12px; padding: 12px; border-radius: 12px; background: rgba(255,255,255,0.025); border: 1px solid var(--glass-line); }
+  .rec-ico { width: 34px; height: 34px; border-radius: 10px; display: grid; place-items: center; font-size: 0.9rem; }
+  .rec-critical .rec-ico { background: rgba(255,92,99,0.14); color: var(--critical); }
+  .rec-low .rec-ico { background: rgba(242,193,78,0.14); color: var(--low); }
+  .rec-info .rec-ico { background: rgba(94,230,208,0.12); color: var(--accent); }
+  .rec-healthy .rec-ico { background: rgba(63,209,143,0.14); color: var(--healthy); }
+
+  /* Table */
+  .tbl { width: 100%; border-collapse: collapse; font-size: 0.8rem; min-width: 680px; }
+  .tbl th { text-align: left; font-size: 0.66rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-3); font-weight: 700; padding: 9px 10px; border-bottom: 1px solid var(--glass-line); white-space: nowrap; }
+  .tbl td { padding: 9px 10px; border-bottom: 1px solid rgba(172,198,236,0.07); white-space: nowrap; }
+  .tbl tbody tr { cursor: pointer; transition: background .12s; }
+  .tbl tbody tr:hover { background: rgba(255,255,255,0.035); }
+  .tbl tbody tr.hl { background: rgba(94,230,208,0.06); }
+  .bar-mini { height: 5px; border-radius: 4px; background: rgba(172,198,236,0.12); width: 70px; overflow: hidden; display: inline-block; vertical-align: middle; margin-right: 8px; }
+  .bar-mini i { display: block; height: 100%; border-radius: 4px; }
+
+  /* Modal */
+  .modal-back { position: fixed; inset: 0; z-index: 60; background: rgba(2,5,10,0.72); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); display: flex; align-items: flex-start; justify-content: center; padding: calc(24px + env(safe-area-inset-top, 0px)) 16px calc(24px + env(safe-area-inset-bottom, 0px)); overflow-y: auto; }
+  .modal-back[hidden], [hidden] { display: none !important; }
+  .modal { width: 100%; max-width: 1100px; background: linear-gradient(160deg, rgba(20,32,52,0.92), rgba(9,15,26,0.96)); border: 1px solid var(--glass-line-strong); border-radius: 20px; box-shadow: 0 40px 120px -20px rgba(0,0,0,0.9); }
+  .tabbar { display: flex; gap: 4px; overflow-x: auto; border-bottom: 1px solid var(--glass-line); padding: 0 18px; }
+  .tabbar button { padding: 12px 12px; font-weight: 700; font-size: 0.82rem; color: var(--ink-3); border-bottom: 2px solid transparent; margin-bottom: -1px; white-space: nowrap; display: inline-flex; gap: 8px; align-items: center; }
+  .tabbar button[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--accent); }
+  .tabbar button:hover { color: var(--ink); }
+  pre.code { font: 400 0.76rem/1.6 "JetBrains Mono", monospace; background: rgba(3,7,13,0.75); border: 1px solid var(--glass-line); border-radius: 12px; padding: 14px 16px; overflow-x: auto; color: #c9d6e8; margin: 0; }
+  pre.code .k { color: #ff8fa0; } pre.code .s { color: #8be0c4; } pre.code .c { color: #62728a; font-style: italic; } pre.code .f { color: #8cb8ff; }
+  .stack-chip { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 8px; font-size: 0.74rem; font-weight: 600; background: rgba(255,255,255,0.05); border: 1px solid var(--glass-line); color: var(--ink-2); }
+  .arch-svg text { font-family: "Manrope", system-ui, sans-serif; }
+
+  .scroll-x { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .fade-in { animation: fadein .5s ease both; }
+  @keyframes fadein { from { opacity: 0.001; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation: none !important; transition: none !important; }
+  }
+</style>
+</head>
+<body>
+<div class="aurora" aria-hidden="true"><span></span></div>
+<div class="grain" aria-hidden="true"></div>
+
+<!-- ============================ TOP BAR ============================ -->
+<header class="topbar">
+  <div class="topbar-inner">
+    <div class="shell" style="padding-block: 10px;">
+      <div class="flex items-center justify-between gap-3 flex-wrap">
+        <div class="flex items-center gap-3 min-w-0">
+          <div class="w-10 h-10 rounded-xl grid place-items-center shrink-0" style="background: linear-gradient(145deg, rgba(224,72,91,0.28), rgba(224,72,91,0.08)); border:1px solid rgba(224,72,91,0.35);">
+            <i class="fa-solid fa-droplet" style="color: var(--plasma);"></i>
+          </div>
+          <div class="min-w-0">
+            <div class="display text-lg font-bold leading-tight">BLifeline <span class="ink-3 font-medium">· Malaysia</span></div>
+            <div class="text-xs ink-3 leading-snug">Blood supply × ICU vulnerability · blood data as of <span class="mono ink-2" id="asOf"></span></div>
+          </div>
+        </div>
+        <div class="flex items-center gap-2 flex-wrap">
+          <span class="hidden md:inline-flex items-center gap-2 text-xs ink-3 mr-1"><span class="w-2 h-2 rounded-full" style="background: var(--accent); box-shadow: 0 0 10px var(--accent);"></span>Model running in-browser</span>
+          <button class="btn" id="openArch" type="button"><i class="fa-solid fa-diagram-project"></i><span>Architecture</span></button>
+        </div>
+      </div>
+    </div>
+  </div>
+</header>
+
+<main class="shell">
+
+  <!-- ============================ HERO + FILTERS ============================ -->
+  <section class="pt-6 pb-4 flex flex-col gap-4">
+    <div class="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-4">
+      <div class="max-w-2xl">
+        <div class="eyebrow mb-2">National blood &amp; critical-care readiness</div>
+        <h1 class="display text-2xl md:text-3xl font-bold leading-tight">Where will blood run short first, and which ICUs feel it?</h1>
+        <p class="ink-2 text-sm mt-2 leading-relaxed">Days of stock per state and blood group, projected forward and set against ICU pressure. Filter by state or group, or stress the system with the surge simulator.</p>
+      </div>
+    </div>
+
+    <div class="glass p-3 md:p-4 flex flex-wrap items-center gap-x-5 gap-y-3" role="region" aria-label="Filters">
+      <div class="flex items-center gap-2">
+        <label for="stateSel" class="eyebrow">State</label>
+        <select id="stateSel" class="ctl-select"><option value="">All of Malaysia</option></select>
+      </div>
+      <div class="flex items-center gap-2 flex-wrap">
+        <span class="eyebrow" id="grpLabel">Blood group</span>
+        <div class="seg" id="grpSeg" role="group" aria-labelledby="grpLabel"></div>
+      </div>
+      <button class="btn ml-auto" id="resetAll" type="button"><i class="fa-solid fa-rotate-left"></i>Reset</button>
+      <div id="scopeLine" class="w-full text-xs ink-3 leading-relaxed"></div>
+    </div>
+  </section>
+
+  <!-- ============================ KPI ROW ============================ -->
+  <section id="kpis" class="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3" aria-label="Key figures"></section>
+
+  <!-- ============================ ROW 1: STOCK + SIMULATOR ============================ -->
+  <section class="grid grid-cols-1 xl:grid-cols-12 gap-4 mt-4">
+    <article class="glass p-4 md:p-5 xl:col-span-8 flex flex-col gap-3">
+      <div class="flex items-start justify-between gap-3 flex-wrap">
+        <div>
+          <div class="eyebrow">Blood supply status</div>
+          <h2 class="display text-lg font-semibold mt-1" id="stockTitle">Days of stock by state</h2>
+          <p class="text-xs ink-3 mt-1 max-w-xl" id="stockSub"></p>
+        </div>
+        <div class="seg" id="stockMode" role="group" aria-label="Chart mode">
+          <button type="button" data-mode="status" aria-pressed="true"><i class="fa-solid fa-signal"></i>Status</button>
+          <button type="button" data-mode="groups" aria-pressed="false"><i class="fa-solid fa-layer-group"></i>By group</button>
+        </div>
+      </div>
+      <div class="flex flex-wrap gap-x-4 gap-y-1 text-xs ink-2" id="stockLegend"></div>
+      <div class="chart-box" id="stockBox" style="height: 520px;"><canvas id="stockChart" aria-label="Days of blood stock by state" role="img"></canvas></div>
+    </article>
+
+    <!-- Surge simulator -->
+    <article class="glass p-4 md:p-5 xl:col-span-4 flex flex-col gap-4" aria-labelledby="simTitle">
+      <div class="flex items-start justify-between gap-3">
+        <div>
+          <div class="eyebrow">Predictive surge simulator</div>
+          <h2 class="display text-lg font-semibold mt-1" id="simTitle">Stress-test the next <span class="mono" id="horizonEcho">7</span> days</h2>
+        </div>
+        <span id="simBadge" class="pill pill-adequate"><i class="fa-solid fa-circle-dot"></i>Baseline</span>
+      </div>
+
+      <div class="flex flex-col gap-2">
+        <label for="scenarioSel" class="text-sm font-semibold flex items-center gap-2"><i class="fa-solid fa-house-flood-water ink-3"></i>Disaster scenario</label>
+        <select id="scenarioSel" class="ctl-select w-full"></select>
+        <p class="text-xs ink-3 leading-relaxed" id="scenarioNote"></p>
+        <div class="flex items-center justify-between text-xs mt-1"><label for="sevRng" class="ink-2 font-semibold">Severity</label><span class="mono ink-2" id="sevVal"></span></div>
+        <input type="range" class="rng" id="sevRng" min="0" max="100" step="5" value="60">
+      </div>
+
+      <div class="h-px" style="background: var(--glass-line);"></div>
+
+      <div class="flex flex-col gap-2">
+        <label for="regionSel" class="text-sm font-semibold flex items-center gap-2"><i class="fa-solid fa-truck-medical ink-3"></i>Regional emergency spike</label>
+        <select id="regionSel" class="ctl-select w-full"></select>
+        <div class="flex items-center justify-between text-xs mt-1"><label for="spikeRng" class="ink-2 font-semibold">Extra blood demand</label><span class="mono ink-2" id="spikeVal"></span></div>
+        <input type="range" class="rng" id="spikeRng" min="0" max="150" step="5" value="40">
+      </div>
+
+      <div class="h-px" style="background: var(--glass-line);"></div>
+
+      <div class="flex flex-col gap-2">
+        <div class="flex items-center justify-between text-sm"><label for="surgeRng" class="font-semibold flex items-center gap-2"><i class="fa-solid fa-bed-pulse ink-3"></i>ICU surge capacity</label><span class="mono ink-2 text-xs" id="surgeVal"></span></div>
+        <input type="range" class="rng" id="surgeRng" min="0" max="50" step="5" value="0">
+        <p class="text-xs ink-3 leading-relaxed">Extra ICU beds opened. Occupancy drops, but more patients treated means more transfusions.</p>
+        <div class="flex items-center justify-between text-sm mt-1"><label for="horizonRng" class="font-semibold flex items-center gap-2"><i class="fa-solid fa-calendar-days ink-3"></i>Forecast horizon</label><span class="mono ink-2 text-xs" id="horizonVal"></span></div>
+        <input type="range" class="rng" id="horizonRng" min="3" max="21" step="1" value="7">
+      </div>
+
+      <div class="glass-flat p-3 grid grid-cols-3 gap-2 text-center" id="simDelta"></div>
+      <div class="flex gap-2 flex-wrap">
+        <button class="btn btn-accent flex-1 justify-center" id="presetBtn" type="button"><i class="fa-solid fa-bolt"></i>Load worst-case preset</button>
+        <button class="btn" id="simReset" type="button"><i class="fa-solid fa-power-off"></i>Clear</button>
+      </div>
+    </article>
+  </section>
+
+  <!-- ============================ ROW 2: ICU VI + MAP ============================ -->
+  <section class="grid grid-cols-1 xl:grid-cols-12 gap-4 mt-4">
+    <article class="glass p-4 md:p-5 xl:col-span-7 flex flex-col gap-3">
+      <div>
+        <div class="eyebrow">ICU vulnerability index</div>
+        <h2 class="display text-lg font-semibold mt-1">Which states' critical care is most exposed</h2>
+        <p class="text-xs ink-3 mt-1 max-w-2xl">0–100. Weighs ICU occupancy (45%), ventilator load (15%) and projected blood cover at the horizon (40%). Faint bars show the no-scenario baseline.</p>
+      </div>
+      <div class="flex flex-wrap gap-x-4 gap-y-1 text-xs ink-2">
+        <span class="inline-flex items-center gap-1.5"><i class="fa-solid fa-triangle-exclamation" style="color:var(--critical)"></i>Critical ≥ 70</span>
+        <span class="inline-flex items-center gap-1.5"><i class="fa-solid fa-circle-exclamation" style="color:var(--low)"></i>Elevated 55–69</span>
+        <span class="inline-flex items-center gap-1.5"><i class="fa-solid fa-circle-check" style="color:var(--healthy)"></i>Stable &lt; 55</span>
+        <span class="inline-flex items-center gap-1.5"><span class="inline-block w-3 h-2 rounded-sm" style="background:rgba(172,198,236,0.2)"></span>Baseline</span>
+      </div>
+      <div class="chart-box" style="height: 460px;"><canvas id="viChart" role="img" aria-label="ICU vulnerability index by state"></canvas></div>
+    </article>
+
+    <article class="glass p-4 md:p-5 xl:col-span-5 flex flex-col gap-3">
+      <div class="flex items-start justify-between gap-3 flex-wrap">
+        <div>
+          <div class="eyebrow">Hospital network</div>
+          <h2 class="display text-lg font-semibold mt-1">18 major state hospitals</h2>
+          <p class="text-xs ink-3 mt-1">Marker size follows ICU occupancy under the current scenario. Tap one to focus its state.</p>
+        </div>
+      </div>
+      <div class="map-wrap">
+        <svg id="map" viewBox="0 0 900 440" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Map of Malaysia with hospital markers"></svg>
+        <div class="map-tip" id="mapTip"></div>
+      </div>
+      <div class="flex flex-wrap gap-x-4 gap-y-1 text-xs ink-2" id="mapLegend"></div>
+      <div class="glass-flat p-3 text-xs ink-2 leading-relaxed" id="mapFocus"></div>
+    </article>
+  </section>
+
+  <!-- ============================ ROW 3: PROJECTION + RECS ============================ -->
+  <section class="grid grid-cols-1 xl:grid-cols-12 gap-4 mt-4">
+    <article class="glass p-4 md:p-5 xl:col-span-7 flex flex-col gap-3">
+      <div>
+        <div class="eyebrow">Stock forecast</div>
+        <h2 class="display text-lg font-semibold mt-1" id="projTitle">Projected days of stock</h2>
+        <p class="text-xs ink-3 mt-1" id="projSub"></p>
+      </div>
+      <div class="flex flex-wrap gap-x-4 gap-y-1 text-xs ink-2" id="projLegend"></div>
+      <div class="chart-box" style="height: 330px;"><canvas id="projChart" role="img" aria-label="Projected days of blood stock over the forecast horizon"></canvas></div>
+    </article>
+
+    <article class="glass p-4 md:p-5 xl:col-span-5 flex flex-col gap-3">
+      <div class="flex items-start justify-between gap-3">
+        <div>
+          <div class="eyebrow">Recommended actions</div>
+          <h2 class="display text-lg font-semibold mt-1" id="recTitle">What to do this week</h2>
+        </div>
+        <span class="pill pill-adequate mono" id="recCount"></span>
+      </div>
+      <div id="recs" class="flex flex-col gap-2.5"></div>
+    </article>
+  </section>
+
+  <!-- ============================ ROW 4: MIX + TABLE ============================ -->
+  <section class="grid grid-cols-1 xl:grid-cols-12 gap-4 mt-4">
+    <article class="glass p-4 md:p-5 xl:col-span-4 flex flex-col gap-3">
+      <div>
+        <div class="eyebrow">Donation mix</div>
+        <h2 class="display text-lg font-semibold mt-1">Supply share vs. demand benchmark</h2>
+        <p class="text-xs ink-3 mt-1" id="mixSub"></p>
+      </div>
+      <div class="chart-box" style="height: 260px;"><canvas id="mixChart" role="img" aria-label="Blood group share of donations versus benchmark"></canvas></div>
+      <div class="grid grid-cols-4 gap-2 text-center" id="mixGap"></div>
+    </article>
+
+    <article class="glass p-4 md:p-5 xl:col-span-8 flex flex-col gap-3">
+      <div class="flex items-start justify-between gap-3 flex-wrap">
+        <div>
+          <div class="eyebrow">Facility detail</div>
+          <h2 class="display text-lg font-semibold mt-1" id="tblTitle">Hospitals ranked by pressure</h2>
+          <p class="text-xs ink-3 mt-1">ICU and ventilator figures are an illustrative baseline adjusted by the simulator. Rows matching the selected group's shortage are highlighted.</p>
+        </div>
+      </div>
+      <div class="scroll-x">
+        <table class="tbl">
+          <thead><tr><th>Hospital</th><th>State</th><th>ICU occ.</th><th>Ventilator</th><th>Blood index</th><th>Most needed</th><th>Status</th></tr></thead>
+          <tbody id="tblBody"></tbody>
+        </table>
+      </div>
+    </article>
+  </section>
+
+  <footer class="mt-6 text-xs ink-3 leading-relaxed max-w-4xl">
+    <p><b class="ink-2">Data.</b> Donation volumes are the rolling 7-day average by state and blood group from data.gov.my's <span class="mono">blood_donations_state</span> dataset. Perlis, W.P. Putrajaya and W.P. Labuan are not reported separately and use a scaled proxy of their neighbouring state. ICU and ventilator occupancy is an illustrative baseline modelled on published 2024 state bed-utilisation ranges, not a live feed.</p>
+    <p class="mt-2"><b class="ink-2">Model.</b> Days of stock are modelled: on-shelf inventory is assumed at 7 days of collections, and daily demand is anchored to each state's collection volume, scaled by ICU pressure and the ABO benchmark (O 44%, A 26%, B 23%, AB 7%). Treat outputs as planning signals, not clinical inventory. Open <button type="button" class="underline ink-2" id="footArch">Architecture</button> for the production pipeline.</p>
+  </footer>
+</main>
+
+<!-- ============================ ARCHITECTURE MODAL ============================ -->
+<div class="modal-back" id="archModal" role="dialog" aria-modal="true" aria-labelledby="archTitle" hidden>
+  <div class="modal">
+    <div class="flex items-start justify-between gap-3 p-5 pb-4">
+      <div>
+        <div class="eyebrow">Architecture inspector</div>
+        <h2 class="display text-xl font-bold mt-1" id="archTitle">How BLifeline is built for production</h2>
+        <p class="text-sm ink-2 mt-1 max-w-2xl">This page runs the same stock-flow model in your browser. The deployed system splits it into three layers: a Next.js frontend, a FastAPI microservice and a Python data science pipeline.</p>
+      </div>
+      <button class="btn" id="closeArch" type="button" aria-label="Close architecture inspector"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    <div class="tabbar" role="tablist" id="archTabs">
+      <button role="tab" aria-selected="true" data-tab="overview" type="button"><i class="fa-solid fa-sitemap"></i>Overview</button>
+      <button role="tab" aria-selected="false" data-tab="frontend" type="button"><i class="fa-brands fa-react"></i>Next.js frontend</button>
+      <button role="tab" aria-selected="false" data-tab="api" type="button"><i class="fa-solid fa-bolt"></i>FastAPI service</button>
+      <button role="tab" aria-selected="false" data-tab="ml" type="button"><i class="fa-brands fa-python"></i>ML pipeline</button>
+      <button role="tab" aria-selected="false" data-tab="try" type="button"><i class="fa-solid fa-terminal"></i>Try the API</button>
+    </div>
+    <div class="p-5" id="archBody"></div>
+  </div>
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  // ======================================================================
+  // 1. DATA
+  // ======================================================================
+  // Real: rolling 7-day average daily donations by state and group,
+  // from https://storage.data.gov.my/healthcare/blood_donations_state.parquet
+  var LIVE_BLOOD = {
+    asOf: "2026-09-23",
+    states: {
+      "Johor":             { A: 26.29, B: 29.43, AB: 4.57,  O: 46.00 },
+      "Kedah":             { A: 20.29, B: 24.29, AB: 5.57,  O: 34.57 },
+      "Kelantan":          { A: 7.57,  B: 10.00, AB: 2.14,  O: 16.71 },
+      "Melaka":            { A: 21.00, B: 20.00, AB: 3.86,  O: 33.86 },
+      "Negeri Sembilan":   { A: 13.86, B: 19.57, AB: 3.71,  O: 27.14 },
+      "Pahang":            { A: 15.86, B: 18.86, AB: 4.71,  O: 29.71 },
+      "Perak":             { A: 29.57, B: 29.71, AB: 5.00,  O: 46.86 },
+      "Pulau Pinang":      { A: 25.00, B: 25.71, AB: 6.57,  O: 45.43 },
+      "Sabah":             { A: 24.71, B: 32.43, AB: 8.00,  O: 57.57 },
+      "Sarawak":           { A: 26.29, B: 30.43, AB: 6.00,  O: 47.14 },
+      "Selangor":          { A: 19.29, B: 19.29, AB: 4.14,  O: 27.29 },
+      "Terengganu":        { A: 12.71, B: 18.00, AB: 4.14,  O: 29.00 },
+      "W.P. Kuala Lumpur": { A: 146.86, B: 162.00, AB: 38.86, O: 261.29 },
+      "Perlis":            { A: 3.04,  B: 3.64,  AB: 0.84,  O: 5.19, proxyOf: "Kedah" },
+      "W.P. Putrajaya":    { A: 0.96,  B: 0.96,  AB: 0.21,  O: 1.36, proxyOf: "Selangor" },
+      "W.P. Labuan":       { A: 0.74,  B: 0.97,  AB: 0.24,  O: 1.73, proxyOf: "Sabah" }
+    }
+  };
+
+  // Illustrative: approximate 2024 state bed-utilisation %, used as ICU baseline.
+  var STATE_ICU_BASE = {
+    "Kedah": 87.6, "Terengganu": 82.2, "Melaka": 79.8, "Perlis": 79.4, "Sabah": 79.1,
+    "W.P. Kuala Lumpur": 76.2, "Pahang": 73.8, "Negeri Sembilan": 72.1, "Kelantan": 70.4,
+    "Perak": 63.5, "Sarawak": 62.2, "Selangor": 54.6, "W.P. Putrajaya": 46.3,
+    "Johor": 41.6, "Pulau Pinang": 36.9, "W.P. Labuan": 12.0
+  };
+
+  var STATE_CAPITALS = {
+    "Johor": [1.4854, 103.7618], "Kedah": [6.1184, 100.3685], "Kelantan": [6.1254, 102.2381],
+    "Melaka": [2.1896, 102.2501], "Negeri Sembilan": [2.7297, 101.9381], "Pahang": [3.8126, 103.3256],
+    "Perak": [4.5975, 101.0901], "Perlis": [6.4414, 100.1986], "Pulau Pinang": [5.4141, 100.3288],
+    "Sabah": [5.9804, 116.0735], "Sarawak": [1.5533, 110.3592], "Selangor": [3.0738, 101.5183],
+    "Terengganu": [5.3117, 103.1324], "W.P. Kuala Lumpur": [3.139, 101.6869],
+    "W.P. Labuan": [5.2831, 115.2308], "W.P. Putrajaya": [2.9264, 101.6964]
+  };
+
+  var SHORT = {
+    "W.P. Kuala Lumpur": "Kuala Lumpur", "W.P. Putrajaya": "Putrajaya", "W.P. Labuan": "Labuan",
+    "Negeri Sembilan": "N. Sembilan", "Pulau Pinang": "Penang"
+  };
+  function short(s) { return SHORT[s] || s; }
+
+  var BORNEO = { "Sabah": 1, "Sarawak": 1, "W.P. Labuan": 1 };
+
+  var HOSPITALS_RAW = [
+    ["Hospital Kuala Lumpur", "W.P. Kuala Lumpur", "Kuala Lumpur", 3.1725, 101.7022, 2302],
+    ["Hospital Sungai Buloh", "Selangor", "Petaling", 3.2088, 101.5461, 758],
+    ["Hospital Ampang", "Selangor", "Ulu Langat", 3.1305, 101.7627, 540],
+    ["Hospital Selayang", "Selangor", "Gombak", 3.2586, 101.6494, 779],
+    ["Hospital Sultanah Aminah", "Johor", "Johor Bahru", 1.4602, 103.7591, 1094],
+    ["Hospital Sultanah Bahiyah", "Kedah", "Kota Setar", 6.1391, 100.3288, 987],
+    ["Hospital Raja Perempuan Zainab II", "Kelantan", "Kota Bharu", 6.1372, 102.2472, 981],
+    ["Hospital Melaka", "Melaka", "Melaka Tengah", 2.1962, 102.2464, 979],
+    ["Hospital Tuanku Ja'afar", "Negeri Sembilan", "Seremban", 2.7186, 101.9497, 997],
+    ["Hospital Tengku Ampuan Afzan", "Pahang", "Kuantan", 3.8168, 103.3175, 687],
+    ["Hospital Raja Permaisuri Bainun", "Perak", "Kinta", 4.6104, 101.0863, 1042],
+    ["Hospital Tuanku Fauziah", "Perlis", "Kangar", 6.4432, 100.1978, 326],
+    ["Hospital Pulau Pinang", "Pulau Pinang", "Timur Laut", 5.4198, 100.3193, 1163],
+    ["Hospital Queen Elizabeth", "Sabah", "Kota Kinabalu", 5.9631, 116.0728, 782],
+    ["Hospital Umum Sarawak", "Sarawak", "Kuching", 1.556, 110.3444, 1078],
+    ["Hospital Sultanah Nur Zahirah", "Terengganu", "Kuala Terengganu", 5.3296, 103.1236, 785],
+    ["Hospital Labuan", "W.P. Labuan", "Labuan", 5.2775, 115.235, 222],
+    ["Hospital Putrajaya", "W.P. Putrajaya", "Putrajaya", 2.9161, 101.6959, 600]
+  ];
+
+  var GROUPS = ["A", "B", "O", "AB"];
+  var GCOLOR = { A: "#3987e5", B: "#d95926", O: "#199e70", AB: "#9085e9" };
+  var GDASH = { A: [], B: [6, 4], O: [2, 3], AB: [10, 3, 2, 3] };
+  var BENCH = { O: 0.44, A: 0.26, B: 0.23, AB: 0.07 };
+  var BUFFER_DAYS = 7, TARGET = 7, CRIT = 3, LOW = 5, MAX_DAYS = 21, ICU_REF = 65;
+  var STATES = Object.keys(LIVE_BLOOD.states).sort();
+
+  var COLORS = {
+    critical: "#ff5c63", low: "#f2c14e", adequate: "#8fa3bf", healthy: "#3fd18f",
+    ink: "#e8eef7", ink2: "#aab6c8", ink3: "#75839a", grid: "rgba(172,198,236,0.08)", ghost: "rgba(172,198,236,0.18)",
+    accent: "#5ee6d0"
+  };
+
+  var REGIONS = {
+    none: { label: "No regional spike", states: [] },
+    northern: { label: "Northern (Perlis, Kedah, Penang, Perak)", states: ["Perlis", "Kedah", "Pulau Pinang", "Perak"] },
+    central: { label: "Central (Klang Valley, N. Sembilan)", states: ["Selangor", "W.P. Kuala Lumpur", "W.P. Putrajaya", "Negeri Sembilan"] },
+    southern: { label: "Southern (Melaka, Johor)", states: ["Melaka", "Johor"] },
+    east: { label: "East Coast (Kelantan, Terengganu, Pahang)", states: ["Kelantan", "Terengganu", "Pahang"] },
+    borneo: { label: "East Malaysia (Sabah, Sarawak, Labuan)", states: ["Sabah", "Sarawak", "W.P. Labuan"] }
+  };
+
+  // icu: extra ICU load at 100% severity · blood: extra transfusion demand ·
+  // collect: fraction of donation collection lost (closed sites, deferrals).
+  var SCENARIOS = {
+    none: { label: "None (baseline)", icu: 0, blood: 0, collect: 0, weights: {}, note: "No disaster applied. The forecast still runs: states whose demand outpaces collection drift down." },
+    ecflood: { label: "Monsoon floods: East Coast", icu: 0.35, blood: 0.45, collect: 0.55,
+      weights: { "Kelantan": 1, "Terengganu": 1, "Pahang": 0.8, "Johor": 0.35 },
+      note: "Northeast-monsoon flooding closes donation sites and cuts roads while trauma and dialysis complications rise." },
+    klang: { label: "Mass-casualty incident: Klang Valley", icu: 0.5, blood: 0.9, collect: 0.05,
+      weights: { "W.P. Kuala Lumpur": 1, "Selangor": 1, "W.P. Putrajaya": 0.7, "Negeri Sembilan": 0.3 },
+      note: "A single large trauma event. Red-cell demand spikes sharply; collection is barely affected." },
+    dengue: { label: "Dengue outbreak: Central & South", icu: 0.4, blood: 0.5, collect: 0.15,
+      weights: { "Selangor": 1, "W.P. Kuala Lumpur": 1, "Negeri Sembilan": 0.6, "Johor": 0.5, "Perak": 0.4, "Melaka": 0.4 },
+      note: "Severe dengue drives platelet and ICU demand; some donors are deferred after infection." },
+    borneo: { label: "Floods: Sabah & Sarawak", icu: 0.3, blood: 0.4, collect: 0.5,
+      weights: { "Sabah": 1, "Sarawak": 1, "W.P. Labuan": 0.6 },
+      note: "East Malaysia can't draw quickly on Peninsular stock, so transfers need air freight." },
+    pandemic: { label: "Respiratory pandemic wave: nationwide", icu: 0.6, blood: 0.15, collect: 0.35,
+      weights: "all",
+      note: "ICU load climbs everywhere and donor turnout falls, the pattern seen in 2020–21." }
+  };
+
+  // ======================================================================
+  // 2. STATE
+  // ======================================================================
+  var filt = { state: "", group: "" };
+  var sim = { scenario: "none", severity: 60, region: "none", spike: 40, surge: 0, horizon: 7 };
+  var stockMode = "status";
+
+  try {
+    var saved = JSON.parse(localStorage.getItem("blifeline.ui") || "null");
+    if (saved && typeof saved === "object") { stockMode = saved.stockMode === "groups" ? "groups" : "status"; }
+  } catch (e) { /* storage unavailable */ }
+  function saveUi() { try { localStorage.setItem("blifeline.ui", JSON.stringify({ stockMode: stockMode })); } catch (e) {} }
+
+  // ======================================================================
+  // 3. MODEL — stock-flow projection per state × blood group
+  // ======================================================================
+  function scenarioWeight(sc, state) {
+    if (sc.weights === "all") return 1;
+    return sc.weights[state] || 0;
+  }
+
+  function project(state, p) {
+    var b = LIVE_BLOOD.states[state];
+    var icu0 = STATE_ICU_BASE[state];
+    var sc = SCENARIOS[p.scenario];
+    var w = scenarioWeight(sc, state) * p.severity / 100;
+    var spike = REGIONS[p.region].states.indexOf(state) >= 0 ? p.spike / 100 : 0;
+
+    var loadMult = 1 + sc.icu * w + spike * 0.6;         // ICU patient load vs baseline
+    var cap = 1 + p.surge / 100;                         // bed capacity vs baseline
+    var occRaw = icu0 * loadMult / cap;
+    var occ = Math.min(100, occRaw);
+    var overflow = Math.max(0, occRaw - 100);            // % of beds' worth of unplaced patients
+    var treated = Math.min(loadMult, cap * 100 / icu0);  // load actually in an ICU bed
+    var bloodMult = (1 + sc.blood * w + spike) * (0.5 + 0.5 * treated);
+    var collect = 1 - sc.collect * w;
+    var icuF = icu0 / ICU_REF;
+    var vent = Math.min(99, occ * 0.64);
+
+    var total = GROUPS.reduce(function (s, g) { return s + b[g]; }, 0);
+    var groups = {};
+    var agg = { I: [], D: 0, S: 0, D0: 0, S0: 0 };
+    GROUPS.forEach(function (g) {
+      var S0 = b[g], D0 = total * BENCH[g] * icuF, I0 = S0 * BUFFER_DAYS;
+      var S = S0 * collect, D = D0 * bloodMult;
+      var days = [], base = [], I = I0, Ib = I0, invs = [];
+      for (var t = 0; t <= p.horizon; t++) {
+        if (t > 0) {
+          I = Math.max(0, Math.min(D0 * MAX_DAYS, I + S - D));
+          Ib = Math.max(0, Math.min(D0 * MAX_DAYS, Ib + S0 - D0));
+        }
+        invs.push(I);
+        days.push(I / D);
+        base.push(Ib / D0);
+      }
+      groups[g] = { S0: S0, D0: D0, S: S, D: D, I0: I0, inv: invs, days: days, base: base,
+        daysNow: days[0], daysH: days[p.horizon], baseH: base[p.horizon], invH: invs[p.horizon] };
+      agg.D += D; agg.S += S; agg.D0 += D0; agg.S0 += S0;
+    });
+    var totDays = [], totBase = [];
+    for (var t2 = 0; t2 <= p.horizon; t2++) {
+      var iSum = 0, bSum = 0;
+      GROUPS.forEach(function (g) { iSum += groups[g].inv[t2]; bSum += groups[g].base[t2] * groups[g].D0; });
+      totDays.push(iSum / agg.D);
+      totBase.push(bSum / agg.D0);
+    }
+    groups.ALL = { S0: agg.S0, D0: agg.D0, S: agg.S, D: agg.D, days: totDays, base: totBase,
+      daysNow: totDays[0], daysH: totDays[p.horizon], baseH: totBase[p.horizon],
+      invH: GROUPS.reduce(function (s, g) { return s + groups[g].invH; }, 0) };
+
+    return { state: state, icu0: icu0, occ: occ, occRaw: occRaw, overflow: overflow, vent: vent,
+      loadMult: loadMult, bloodMult: bloodMult, collect: collect, groups: groups,
+      proxyOf: b.proxyOf || null, affected: w > 0 || spike > 0 };
+  }
+
+  function vulnIndex(r, g) {
+    var d = r.groups[g || "ALL"].daysH;
+    var stockRisk = Math.max(0, Math.min(1, (TARGET * 1.5 - d) / (TARGET * 1.5))) * 100;
+    var vi = 0.45 * r.occ + 0.15 * r.vent + 0.40 * stockRisk + Math.min(10, r.overflow * 0.5);
+    return Math.max(0, Math.min(100, vi));
+  }
+  function viTier(v) { return v >= 70 ? "critical" : v >= 55 ? "low" : "healthy"; }
+  var VI_LABEL = { critical: "Critical", low: "Elevated", healthy: "Stable" };
+  function daysTier(d) { return d < CRIT ? "critical" : d < LOW ? "low" : d < TARGET ? "adequate" : "healthy"; }
+  var DAYS_LABEL = { critical: "Critical < 3 d", low: "Low 3–5 d", adequate: "Adequate 5–7 d", healthy: "Healthy ≥ 7 d" };
+  var TIER_ICON = { critical: "fa-triangle-exclamation", low: "fa-circle-exclamation", adequate: "fa-circle-half-stroke", healthy: "fa-circle-check" };
+
+  var BASE_PARAMS = { scenario: "none", severity: 0, region: "none", spike: 0, surge: 0 };
+  function isBaseline() {
+    return (sim.scenario === "none" || sim.severity === 0) && (sim.region === "none" || sim.spike === 0) && sim.surge === 0;
+  }
+
+  var results = {}, baseResults = {};
+  function runModel() {
+    var bp = Object.assign({}, BASE_PARAMS, { horizon: sim.horizon });
+    STATES.forEach(function (s) {
+      results[s] = project(s, sim);
+      baseResults[s] = project(s, bp);
+    });
+  }
+
+  function nationalSeries(res, key) {
+    // Demand-weighted national days-of-stock series for a group (or ALL).
+    var g = key || "ALL", out = [];
+    for (var t = 0; t <= sim.horizon; t++) {
+      var inv = 0, dem = 0;
+      STATES.forEach(function (s) {
+        var gr = res[s].groups[g];
+        inv += gr.days[t] * gr.D; dem += gr.D;
+      });
+      out.push(inv / dem);
+    }
+    return out;
+  }
+  function scopeSeries(res, key) {
+    var g = key || "ALL";
+    return filt.state ? res[filt.state].groups[g].days : nationalSeries(res, g);
+  }
+
+  // ======================================================================
+  // 4. HOSPITALS (illustrative ICU baseline, same seeded jitter as prototype)
+  // ======================================================================
+  function seeded(seed) { var s = seed; return function () { s = (s * 9301 + 49297) % 233280; return s / 233280; }; }
+  var rand = seeded(42);
+  function haversineKm(lat1, lng1, lat2, lng2) {
+    var R = 6371, p1 = lat1 * Math.PI / 180, p2 = lat2 * Math.PI / 180;
+    var dphi = (lat2 - lat1) * Math.PI / 180, dl = (lng2 - lng1) * Math.PI / 180;
+    var a = Math.pow(Math.sin(dphi / 2), 2) + Math.cos(p1) * Math.cos(p2) * Math.pow(Math.sin(dl / 2), 2);
+    return 2 * R * Math.asin(Math.sqrt(a));
+  }
+  var byStateRaw = {};
+  HOSPITALS_RAW.forEach(function (h) { (byStateRaw[h[1]] = byStateRaw[h[1]] || []).push(h); });
+  function gravityOf(h) { var c = STATE_CAPITALS[h[1]]; return h[5] * Math.exp(-haversineKm(h[3], h[4], c[0], c[1]) / 80); }
+
+  var hospitals = HOSPITALS_RAW.map(function (row, idx) {
+    var state = row[1];
+    var totalG = byStateRaw[state].reduce(function (s, h) { return s + gravityOf(h); }, 0);
+    var share = gravityOf(row) / totalG;
+    var icu = Math.min(99, Math.max(5, STATE_ICU_BASE[state] + (rand() - 0.5) * 16));
+    var vent = Math.min(99, Math.max(0, icu * 0.62 + (rand() - 0.5) * 20));
+    var b = LIVE_BLOOD.states[state];
+    var total = GROUPS.reduce(function (s, g) { return s + b[g]; }, 0);
+    var mostNeeded = "O", best = -Infinity;
+    GROUPS.forEach(function (g) { var gap = BENCH[g] - b[g] / total; if (gap > best) { best = gap; mostNeeded = g; } });
+    return { id: idx, name: row[0], state: state, district: row[2], lat: row[3], lng: row[4], beds: row[5],
+      icu0: icu, vent0: vent, blood0: share * total, mostNeeded: mostNeeded };
+  });
+  function median(arr) { var a = arr.slice().sort(function (x, y) { return x - y; }); return a[Math.floor(a.length / 2)]; }
+  var ICU_CUT = median(hospitals.map(function (h) { return h.icu0; }));
+  var BLOOD_CUT = median(hospitals.map(function (h) { return h.blood0; }));
+  var Q_LABEL = { critical: "Critical zone", stable: "High demand", watch: "Watch", healthy: "Healthy" };
+  var Q_PILL = { critical: "pill-critical", stable: "pill-low", watch: "pill-adequate", healthy: "pill-healthy" };
+  var Q_COLOR = { critical: COLORS.critical, stable: COLORS.low, watch: COLORS.adequate, healthy: COLORS.healthy };
+
+  function hospitalNow(h) {
+    var r = results[h.state];
+    var cap = 1 + sim.surge / 100;
+    var icu = Math.min(100, h.icu0 * r.loadMult / cap);
+    var vent = Math.min(99, h.vent0 * r.loadMult / cap);
+    var blood = h.blood0 * r.collect / r.bloodMult;   // supply per unit of demand pressure
+    var hi = icu >= ICU_CUT, hb = blood >= BLOOD_CUT;
+    var q = hi && !hb ? "critical" : hi && hb ? "stable" : !hi && !hb ? "watch" : "healthy";
+    return { icu: icu, vent: vent, blood: blood, quadrant: q, ratio: icu / (blood + 1e-6) };
+  }
+
+  // ======================================================================
+  // 5. HELPERS
+  // ======================================================================
+  function $(id) { return document.getElementById(id); }
+  function fmt(n, d) { return (d == null ? n.toFixed(1) : n.toFixed(d)); }
+  function fmtInt(n) { return Math.round(n).toLocaleString("en-MY"); }
+  function pill(tier, text, icon) { return '<span class="pill pill-' + tier + '"><i class="fa-solid ' + (icon || TIER_ICON[tier]) + '"></i>' + text + '</span>'; }
+  function gKey() { return filt.group || "ALL"; }
+  function gName() { return filt.group ? "group " + filt.group : "all groups"; }
+  function setRangeFill(input) {
+    var p = (input.value - input.min) / (input.max - input.min) * 100;
+    input.style.setProperty("--p", p + "%");
+  }
+
+  // ======================================================================
+  // 6. CHART.JS SETUP
+  // ======================================================================
+  Chart.defaults.color = COLORS.ink2;
+  Chart.defaults.font.family = "Manrope, system-ui, sans-serif";
+  Chart.defaults.font.size = 11;
+  Chart.defaults.borderColor = COLORS.grid;
+  Chart.defaults.animation.duration = 450;
+  var tooltipStyle = {
+    backgroundColor: "rgba(8,14,24,0.95)", borderColor: "rgba(172,198,236,0.22)", borderWidth: 1,
+    titleColor: COLORS.ink, bodyColor: COLORS.ink2, padding: 10, cornerRadius: 10, boxPadding: 4,
+    titleFont: { family: "Sora, Manrope, sans-serif", weight: "600", size: 12 },
+    bodyFont: { family: "JetBrains Mono, monospace", size: 11 }
+  };
+
+  // Vertical reference lines (x = 3 d critical, x = 7 d target) on the stock chart
+  var thresholdPlugin = {
+    id: "thresholds",
+    afterDatasetsDraw: function (chart, args, opts) {
+      if (!opts || !opts.lines) return;
+      var ctx = chart.ctx, area = chart.chartArea, xs = chart.scales.x;
+      opts.lines.forEach(function (ln) {
+        var x = xs.getPixelForValue(ln.value);
+        if (x < area.left || x > area.right) return;
+        ctx.save();
+        ctx.strokeStyle = ln.color; ctx.lineWidth = 1.2; ctx.setLineDash([4, 4]);
+        ctx.beginPath(); ctx.moveTo(x, area.top); ctx.lineTo(x, area.bottom); ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.fillStyle = ln.color; ctx.font = "600 10px JetBrains Mono, monospace"; ctx.textAlign = "center";
+        ctx.fillText(ln.label, x, area.top - 6);
+        ctx.restore();
+      });
+    }
+  };
+  // Horizontal band (y < 3 d) on the projection chart
+  var bandPlugin = {
+    id: "critBand",
+    beforeDatasetsDraw: function (chart, args, opts) {
+      if (!opts || opts.below == null) return;
+      var ctx = chart.ctx, area = chart.chartArea, ys = chart.scales.y;
+      var yTop = Math.max(area.top, ys.getPixelForValue(opts.below));
+      ctx.save();
+      ctx.fillStyle = "rgba(255,92,99,0.08)";
+      ctx.fillRect(area.left, yTop, area.right - area.left, area.bottom - yTop);
+      var yT = ys.getPixelForValue(opts.target);
+      if (yT > area.top && yT < area.bottom) {
+        ctx.strokeStyle = "rgba(63,209,143,0.5)"; ctx.setLineDash([4, 4]); ctx.beginPath(); ctx.moveTo(area.left, yT); ctx.lineTo(area.right, yT); ctx.stroke();
+        ctx.setLineDash([]); ctx.fillStyle = COLORS.healthy; ctx.font = "600 10px JetBrains Mono, monospace"; ctx.textAlign = "right";
+        ctx.fillText("7-day target", area.right - 4, yT - 5);
+      }
+      ctx.fillStyle = COLORS.critical; ctx.font = "600 10px JetBrains Mono, monospace"; ctx.textAlign = "right";
+      ctx.fillText("critical < 3 d", area.right - 4, area.bottom - 6);
+      ctx.restore();
+    }
+  };
+  // Direct end-of-line labels on the projection chart
+  var endLabelPlugin = {
+    id: "endLabels",
+    afterDatasetsDraw: function (chart, args, opts) {
+      if (!opts || !opts.enabled) return;
+      var ctx = chart.ctx, placed = [];
+      chart.data.datasets.forEach(function (ds, i) {
+        if (!ds.endLabel) return;
+        var meta = chart.getDatasetMeta(i);
+        var pt = meta.data[meta.data.length - 1];
+        if (!pt) return;
+        var y = pt.y;
+        placed.forEach(function (py) { if (Math.abs(py - y) < 12) y = py + 12; });
+        placed.push(y);
+        ctx.save();
+        ctx.fillStyle = COLORS.ink; ctx.font = "700 10px JetBrains Mono, monospace"; ctx.textAlign = "left"; ctx.textBaseline = "middle";
+        ctx.fillText(ds.endLabel, pt.x + 6, y);
+        ctx.restore();
+      });
+    }
+  };
+  Chart.register(thresholdPlugin, bandPlugin, endLabelPlugin);
+
+  var stockChart = new Chart($("stockChart"), {
+    type: "bar",
+    data: { labels: [], datasets: [] },
+    options: {
+      indexAxis: "y", responsive: true, maintainAspectRatio: false,
+      layout: { padding: { top: 16, right: 8 } },
+      scales: {
+        x: { min: 0, max: MAX_DAYS, grid: { color: COLORS.grid }, ticks: { color: COLORS.ink3, callback: function (v) { return v + " d"; } },
+             title: { display: true, text: "Days of stock", color: COLORS.ink3, font: { weight: "600" } } },
+        y: { grid: { display: false }, ticks: { color: COLORS.ink2, font: { weight: "600" } } }
+      },
+      plugins: {
+        legend: { display: false },
+        tooltip: Object.assign({}, tooltipStyle, {
+          callbacks: {
+            label: function (c) { return " " + c.dataset.label + ": " + c.parsed.x.toFixed(1) + " days"; },
+            afterBody: function (items) {
+              var st = stockChart.$states[items[0].dataIndex];
+              var r = results[st];
+              var lines = ["ICU occupancy " + r.occ.toFixed(0) + "%"];
+              if (r.proxyOf) lines.push("Supply is a proxy of " + r.proxyOf);
+              return lines;
+            }
+          }
+        }),
+        thresholds: { lines: [
+          { value: CRIT, color: COLORS.critical, label: "3 d" },
+          { value: TARGET, color: COLORS.healthy, label: "7 d target" }
+        ] }
+      },
+      onClick: function (evt, els) {
+        if (!els.length) return;
+        var st = stockChart.$states[els[0].index];
+        setState(filt.state === st ? "" : st);
+      },
+      datasets: { bar: { borderRadius: 4, borderSkipped: "start", maxBarThickness: 16, categoryPercentage: 0.78, barPercentage: 0.92 } }
+    }
+  });
+
+  var viChart = new Chart($("viChart"), {
+    type: "bar",
+    data: { labels: [], datasets: [] },
+    options: {
+      indexAxis: "y", responsive: true, maintainAspectRatio: false,
+      scales: {
+        x: { min: 0, max: 100, grid: { color: COLORS.grid }, ticks: { color: COLORS.ink3, stepSize: 20 } },
+        y: { stacked: false, grid: { display: false }, ticks: { color: COLORS.ink2, font: { weight: "600" } } }
+      },
+      plugins: {
+        legend: { display: false },
+        tooltip: Object.assign({}, tooltipStyle, {
+          callbacks: {
+            label: function (c) { return " " + c.dataset.label + ": " + c.parsed.x.toFixed(0) + " / 100"; },
+            afterBody: function (items) {
+              var st = viChart.$states[items[0].dataIndex], r = results[st];
+              var out = ["ICU occupancy " + r.occ.toFixed(0) + "%" + (r.overflow > 0 ? " (+" + r.overflow.toFixed(0) + "% over capacity)" : ""),
+                "Ventilators " + r.vent.toFixed(0) + "%",
+                "Blood cover day " + sim.horizon + ": " + r.groups[gKey()].daysH.toFixed(1) + " d"];
+              return out;
+            }
+          }
+        })
+      },
+      onClick: function (evt, els) {
+        if (!els.length) return;
+        var st = viChart.$states[els[0].index];
+        setState(filt.state === st ? "" : st);
+      },
+      datasets: { bar: { borderRadius: 4, borderSkipped: "start", maxBarThickness: 14, grouped: false } }
+    }
+  });
+
+  var projChart = new Chart($("projChart"), {
+    type: "line",
+    data: { labels: [], datasets: [] },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      interaction: { mode: "index", intersect: false },
+      layout: { padding: { right: 44, top: 6 } },
+      scales: {
+        x: { grid: { color: COLORS.grid }, ticks: { color: COLORS.ink3 } },
+        y: { min: 0, grid: { color: COLORS.grid }, ticks: { color: COLORS.ink3, callback: function (v) { return v + " d"; } },
+             title: { display: true, text: "Days of stock", color: COLORS.ink3, font: { weight: "600" } } }
+      },
+      plugins: {
+        legend: { display: false },
+        tooltip: Object.assign({}, tooltipStyle, { callbacks: { label: function (c) { return " " + c.dataset.label + ": " + c.parsed.y.toFixed(1) + " d"; } } }),
+        critBand: { below: CRIT, target: TARGET },
+        endLabels: { enabled: true }
+      },
+      elements: { line: { borderWidth: 2, tension: 0.25 }, point: { radius: 0, hoverRadius: 5, hitRadius: 10 } }
+    }
+  });
+
+  var mixChart = new Chart($("mixChart"), {
+    type: "bar",
+    data: { labels: GROUPS, datasets: [] },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      scales: {
+        x: { grid: { display: false }, ticks: { color: COLORS.ink2, font: { family: "JetBrains Mono, monospace", weight: "700", size: 12 } } },
+        y: { min: 0, grid: { color: COLORS.grid }, ticks: { color: COLORS.ink3, callback: function (v) { return v + "%"; } } }
+      },
+      plugins: {
+        legend: { display: true, position: "bottom", labels: { color: COLORS.ink2, boxWidth: 12, boxHeight: 8, usePointStyle: false } },
+        tooltip: Object.assign({}, tooltipStyle, { callbacks: { label: function (c) { return " " + c.dataset.label + ": " + c.parsed.y.toFixed(1) + "%"; } } })
+      },
+      datasets: { bar: { borderRadius: 4, borderSkipped: "start", maxBarThickness: 28, categoryPercentage: 0.7, barPercentage: 0.88 } }
+    }
+  });
+
+  // ======================================================================
+  // 7. RENDERERS
+  // ======================================================================
+  function alpha(hex, a) {
+    var n = parseInt(hex.slice(1), 16);
+    return "rgba(" + (n >> 16 & 255) + "," + (n >> 8 & 255) + "," + (n & 255) + "," + a + ")";
+  }
+  function dimFor(st) { return filt.state && filt.state !== st; }
+
+  function renderStock() {
+    var g = gKey();
+    var modeAllowed = !filt.group;
+    document.querySelectorAll("#stockMode button").forEach(function (b) {
+      b.disabled = b.dataset.mode === "groups" && !modeAllowed;
+      b.style.opacity = b.disabled ? 0.4 : 1;
+      b.setAttribute("aria-pressed", String(b.dataset.mode === (modeAllowed ? stockMode : "status")));
+    });
+    var mode = modeAllowed ? stockMode : "status";
+    var order = STATES.slice().sort(function (a, b) { return results[a].groups[g].daysH - results[b].groups[g].daysH; });
+    stockChart.$states = order;
+    stockChart.data.labels = order.map(function (s) { return short(s) + (results[s].proxyOf ? " *" : ""); });
+
+    if (mode === "status") {
+      stockChart.data.datasets = [
+        { label: "Today", data: order.map(function (s) { return results[s].groups[g].daysNow; }),
+          backgroundColor: order.map(function (s) { return dimFor(s) ? "rgba(172,198,236,0.06)" : COLORS.ghost; }), grouped: false, order: 2, maxBarThickness: 18 },
+        { label: "Day " + sim.horizon, data: order.map(function (s) { return results[s].groups[g].daysH; }),
+          backgroundColor: order.map(function (s) { var c = COLORS[daysTier(results[s].groups[g].daysH)]; return dimFor(s) ? alpha(c, 0.22) : c; }),
+          grouped: false, order: 1, maxBarThickness: 9 }
+      ];
+      $("stockLegend").innerHTML =
+        ["critical", "low", "adequate", "healthy"].map(function (t) {
+          return '<span class="inline-flex items-center gap-1.5"><i class="fa-solid ' + TIER_ICON[t] + '" style="color:' + COLORS[t] + '"></i>' + DAYS_LABEL[t] + '</span>';
+        }).join("") +
+        '<span class="inline-flex items-center gap-1.5"><span class="inline-block w-4 h-2.5 rounded-sm" style="background:' + COLORS.ghost + '"></span>Today (wide bar)</span>' +
+        '<span class="inline-flex items-center gap-1.5 ink-3">* proxy supply</span>';
+    } else {
+      stockChart.data.datasets = GROUPS.map(function (gr) {
+        return { label: "Group " + gr, data: order.map(function (s) { return results[s].groups[gr].daysH; }),
+          backgroundColor: order.map(function (s) { return dimFor(s) ? alpha(GCOLOR[gr], 0.2) : GCOLOR[gr]; }),
+          borderColor: "rgba(6,10,17,0.9)", borderWidth: { right: 1 }, grouped: true, maxBarThickness: 6 };
+      });
+      $("stockLegend").innerHTML = GROUPS.map(function (gr) {
+        return '<span class="inline-flex items-center gap-1.5 mono font-semibold"><span class="inline-block w-2.5 h-2.5 rounded-sm" style="background:' + GCOLOR[gr] + '"></span>' + gr + '</span>';
+      }).join("") + '<span class="inline-flex items-center gap-1.5 ink-3">* proxy supply</span>';
+    }
+    $("stockBox").style.height = (mode === "groups" ? 640 : 520) + "px";
+    $("stockTitle").textContent = "Days of stock by state · " + (filt.group ? "group " + filt.group : (mode === "groups" ? "each group" : "all groups"));
+    $("stockSub").textContent = "Projected cover on day " + sim.horizon + (isBaseline() ? " with no intervention" : " under the current scenario") +
+      ", sorted from least to most. " + (mode === "status" ? "Wide faint bar is today's cover. " : "") + "Click a state to focus it.";
+    stockChart.update();
+  }
+
+  function renderVI() {
+    var g = filt.group || null;
+    var order = STATES.slice().sort(function (a, b) { return vulnIndex(results[b], g) - vulnIndex(results[a], g); });
+    viChart.$states = order;
+    viChart.data.labels = order.map(short);
+    var base = !isBaseline();
+    viChart.data.datasets = [
+      { label: "Baseline", data: order.map(function (s) { return vulnIndex(baseResults[s], g); }),
+        backgroundColor: order.map(function (s) { return base ? (dimFor(s) ? "rgba(172,198,236,0.05)" : COLORS.ghost) : "rgba(0,0,0,0)"; }),
+        order: 2, maxBarThickness: 18, hidden: !base },
+      { label: base ? "Scenario" : "Index", data: order.map(function (s) { return vulnIndex(results[s], g); }),
+        backgroundColor: order.map(function (s) { var c = COLORS[viTier(vulnIndex(results[s], g))]; return dimFor(s) ? alpha(c, 0.22) : c; }),
+        order: 1, maxBarThickness: 9 }
+    ];
+    viChart.update();
+  }
+
+  function renderProjection() {
+    var labels = [];
+    for (var t = 0; t <= sim.horizon; t++) labels.push(t === 0 ? "Today" : "D+" + t);
+    projChart.data.labels = labels;
+    var scopeName = filt.state ? filt.state : "Malaysia (demand-weighted)";
+    var ds = [];
+    if (filt.group) {
+      var gr = filt.group;
+      ds.push({ label: "Baseline " + gr, data: scopeSeries(baseResults, gr), borderColor: "rgba(172,198,236,0.55)", borderDash: [5, 4], backgroundColor: "transparent", endLabel: "base" });
+      ds.push({ label: "Scenario " + gr, data: scopeSeries(results, gr), borderColor: GCOLOR[gr], backgroundColor: alpha(GCOLOR[gr], 0.12), fill: "origin", borderWidth: 2.5, endLabel: gr });
+      $("projLegend").innerHTML =
+        '<span class="inline-flex items-center gap-1.5"><span class="inline-block w-5 h-0.5" style="background:' + GCOLOR[gr] + '"></span>Group ' + gr + ' · scenario</span>' +
+        '<span class="inline-flex items-center gap-1.5"><span class="inline-block w-5 border-t-2 border-dashed" style="border-color:rgba(172,198,236,0.55)"></span>No-scenario baseline</span>';
+    } else {
+      GROUPS.forEach(function (gr) {
+        ds.push({ label: "Group " + gr, data: scopeSeries(results, gr), borderColor: GCOLOR[gr], borderDash: GDASH[gr], backgroundColor: "transparent", endLabel: gr });
+      });
+      $("projLegend").innerHTML = GROUPS.map(function (gr) {
+        return '<span class="inline-flex items-center gap-1.5 mono font-semibold"><svg width="22" height="6" aria-hidden="true"><line x1="0" y1="3" x2="22" y2="3" stroke="' + GCOLOR[gr] + '" stroke-width="2" stroke-dasharray="' + (GDASH[gr].join(" ") || "none") + '"/></svg>' + gr + '</span>';
+      }).join("");
+    }
+    projChart.data.datasets = ds;
+    var maxY = 0; ds.forEach(function (d) { d.data.forEach(function (v) { if (v > maxY) maxY = v; }); });
+    projChart.options.scales.y.max = Math.max(10, Math.ceil(maxY + 1));
+    projChart.update();
+    $("projTitle").textContent = "Projected days of stock · " + scopeName;
+    $("projSub").textContent = "Daily stock-flow: on-shelf units + collections − transfusion demand, " + sim.horizon + "-day horizon" +
+      (filt.group ? ", group " + filt.group + " against its no-scenario baseline." : ", one line per blood group.");
+  }
+
+  function renderMix() {
+    var sup = {}, tot = 0;
+    var pool = filt.state ? [filt.state] : STATES;
+    GROUPS.forEach(function (g) { sup[g] = 0; });
+    pool.forEach(function (s) { GROUPS.forEach(function (g) { var v = results[s].groups[g].S; sup[g] += v; tot += v; }); });
+    mixChart.data.datasets = [
+      { label: "Donation share", data: GROUPS.map(function (g) { return sup[g] / tot * 100; }),
+        backgroundColor: GROUPS.map(function (g) { return !filt.group || filt.group === g ? GCOLOR[g] : alpha(GCOLOR[g], 0.25); }) },
+      { label: "Demand benchmark", data: GROUPS.map(function (g) { return BENCH[g] * 100; }),
+        backgroundColor: "rgba(172,198,236,0.14)", borderColor: "rgba(172,198,236,0.55)", borderWidth: 1 }
+    ];
+    mixChart.update();
+    $("mixSub").textContent = (filt.state ? filt.state : "All states") + " · collections per day " + fmtInt(tot) + " units. A group below its benchmark drains faster.";
+    $("mixGap").innerHTML = GROUPS.map(function (g) {
+      var gap = sup[g] / tot * 100 - BENCH[g] * 100;
+      var col = gap < -0.5 ? COLORS.critical : gap > 0.5 ? COLORS.healthy : COLORS.ink2;
+      return '<div class="glass-flat py-2 px-1' + (filt.group === g ? '" style="border-color:' + GCOLOR[g] + '"' : '"') + '><div class="mono text-xs font-bold ink-2">' + g + '</div><div class="mono text-sm font-semibold" style="color:' + col + '">' + (gap > 0 ? "+" : "") + gap.toFixed(1) + '<span class="text-xs ink-3"> pp</span></div></div>';
+    }).join("");
+  }
+
+  function renderKpis() {
+    var g = gKey();
+    var pool = filt.state ? [filt.state] : STATES;
+    var series = scopeSeries(results, g);
+    var now = series[0], end = series[sim.horizon];
+    var nBelow, nTotal, belowLabel;
+    if (filt.state) {
+      nBelow = GROUPS.filter(function (gr) { return results[filt.state].groups[gr].daysH < CRIT; }).length;
+      nTotal = 4; belowLabel = "Groups below 3 days";
+    } else {
+      var gs = filt.group ? [filt.group] : GROUPS;
+      nBelow = STATES.filter(function (s) { return gs.some(function (gr) { return results[s].groups[gr].daysH < CRIT; }); }).length;
+      nTotal = STATES.length; belowLabel = filt.group ? "States below 3 days" : "States with a group < 3 d";
+    }
+    var occSum = 0, overflowAny = 0;
+    pool.forEach(function (s) { occSum += results[s].occ; if (results[s].overflow > 0) overflowAny++; });
+    var occAvg = occSum / pool.length;
+    var worst = pool.slice().sort(function (a, b) { return vulnIndex(results[b], filt.group) - vulnIndex(results[a], filt.group); })[0];
+    var worstVi = vulnIndex(results[worst], filt.group);
+    var shortfall = 0;
+    pool.forEach(function (s) {
+      (filt.group ? [filt.group] : GROUPS).forEach(function (gr) {
+        var r = results[s].groups[gr];
+        shortfall += Math.max(0, TARGET * r.D - r.invH);
+      });
+    });
+
+    var tiles = [
+      { label: "Blood cover · " + (filt.group || "all"), icon: "fa-droplet", val: fmt(now) + '<span class="text-sm ink-3"> d</span>', sub: '→ <b style="color:' + COLORS[daysTier(end)] + '">' + fmt(end) + ' d</b> by day ' + sim.horizon, tier: daysTier(end) },
+      { label: belowLabel, icon: "fa-triangle-exclamation", val: nBelow + '<span class="text-sm ink-3"> / ' + nTotal + '</span>', sub: "projected, day " + sim.horizon, tier: nBelow > 0 ? "critical" : "healthy" },
+      { label: "Avg ICU occupancy", icon: "fa-bed-pulse", val: fmt(occAvg, 0) + '<span class="text-sm ink-3">%</span>', sub: overflowAny ? overflowAny + " over capacity" : (sim.surge ? "+" + sim.surge + "% surge beds open" : "baseline beds"), tier: occAvg >= 85 ? "critical" : occAvg >= 70 ? "low" : "healthy" },
+      { label: "Most vulnerable", icon: "fa-heart-pulse", val: '<span class="text-base md:text-lg">' + short(worst) + '</span>', sub: "index " + fmt(worstVi, 0) + " / 100", tier: viTier(worstVi) },
+      { label: "Shortfall to 7-day target", icon: "fa-box-open", val: fmtInt(shortfall) + '<span class="text-sm ink-3"> u</span>', sub: "units needed on day " + sim.horizon, tier: shortfall > 0 ? (end < CRIT ? "critical" : "low") : "healthy" },
+      { label: "Blood data as of", icon: "fa-database", val: '<span class="text-base md:text-lg">' + LIVE_BLOOD.asOf + '</span>', sub: "data.gov.my · 7-day avg", tier: null }
+    ];
+    $("kpis").innerHTML = tiles.map(function (t) {
+      var col = t.tier ? COLORS[t.tier] : COLORS.ink;
+      return '<div class="glass p-3.5 flex flex-col gap-1.5 fade-in" style="border-radius:14px">' +
+        '<div class="flex items-center justify-between gap-2"><span class="eyebrow" style="letter-spacing:0.08em">' + t.label + '</span>' +
+        '<i class="fa-solid ' + t.icon + ' text-xs" style="color:' + (t.tier ? col : COLORS.ink3) + '"></i></div>' +
+        '<div class="kpi-val" style="color:' + (t.tier === "healthy" || !t.tier ? COLORS.ink : col) + '">' + t.val + '</div>' +
+        '<div class="text-xs ink-3">' + t.sub + '</div></div>';
+    }).join("");
+  }
+
+  function renderScope() {
+    var parts = [];
+    if (filt.state) {
+      var r = results[filt.state];
+      parts.push('<b class="ink-2">' + filt.state + '</b>: ICU ' + r.occ.toFixed(0) + '%, ventilators ' + r.vent.toFixed(0) + '%, collecting ' + fmtInt(r.groups.ALL.S) + ' units/day' +
+        (r.proxyOf ? ' <span style="color:' + COLORS.low + '">(supply is a scaled proxy of ' + r.proxyOf + ')</span>' : ''));
+    } else {
+      parts.push("Showing all 16 states and federal territories.");
+    }
+    if (filt.group) parts.push("Blood group <b class='ink-2 mono'>" + filt.group + "</b> (benchmark demand share " + (BENCH[filt.group] * 100) + "%).");
+    if (!isBaseline()) parts.push('<span style="color:' + COLORS.accent + '"><i class="fa-solid fa-flask"></i> Simulator active.</span>');
+    $("scopeLine").innerHTML = parts.join(" ");
+  }
+
+  // ---------------- Recommendations engine ----------------
+  function buildRecs() {
+    var recs = [];
+    var groups = filt.group ? [filt.group] : GROUPS;
+    var pool = filt.state ? [filt.state] : STATES;
+    var H = sim.horizon;
+
+    // 1) Donor drives where cover falls under 3 days
+    var drives = [];
+    pool.forEach(function (s) {
+      groups.forEach(function (g) {
+        var r = results[s].groups[g];
+        if (r.daysH < CRIT) {
+          var extra = Math.max(0, (TARGET * r.D - r.invH) / H);
+          drives.push({ s: s, g: g, d: r.daysH, extra: extra });
+        }
+      });
+    });
+    drives.sort(function (a, b) { return a.d - b.d; });
+    drives.slice(0, 3).forEach(function (x) {
+      recs.push({ tier: "critical", icon: "fa-hand-holding-droplet",
+        title: "Run a group " + x.g + " donor drive in " + short(x.s),
+        body: "Cover falls to " + fmt(x.d) + " days by day " + H + ". About " + fmtInt(x.extra) + " extra " + x.g + " donations a day would restore the 7-day target." +
+          (x.g === "O" ? " Group O red cells are the emergency fallback, so trauma care feels this first." : ""),
+        chip: fmt(x.d) + " d" });
+    });
+
+    // 2) Inter-state transfers: surplus (> 10 d) → deficit (< 5 d), same group
+    var transfers = [];
+    groups.forEach(function (g) {
+      var donors = STATES.map(function (s) { var r = results[s].groups[g]; return { s: s, spare: Math.max(0, r.invH - 10 * r.D) }; })
+        .filter(function (x) { return x.spare >= 5; }).sort(function (a, b) { return b.spare - a.spare; });
+      var needs = pool.map(function (s) { var r = results[s].groups[g]; return { s: s, need: Math.max(0, LOW * r.D - r.invH), d: r.daysH }; })
+        .filter(function (x) { return x.need >= 3; }).sort(function (a, b) { return a.d - b.d; });
+      needs.forEach(function (n) {
+        for (var i = 0; i < donors.length && n.need > 1; i++) {
+          var dn = donors[i];
+          if (dn.s === n.s || dn.spare < 3) continue;
+          var sameLand = !!BORNEO[dn.s] === !!BORNEO[n.s];
+          var units = Math.min(dn.spare, n.need);
+          transfers.push({ g: g, from: dn.s, to: n.s, units: units, air: !sameLand, d: n.d });
+          dn.spare -= units; n.need -= units;
+        }
+      });
+    });
+    transfers.sort(function (a, b) { return a.d - b.d; });
+    transfers.slice(0, 3).forEach(function (t) {
+      recs.push({ tier: "low", icon: t.air ? "fa-plane" : "fa-truck-fast",
+        title: "Move " + fmtInt(t.units) + " units of " + t.g + " from " + short(t.from) + " to " + short(t.to),
+        body: short(t.from) + " holds more than 10 days of " + t.g + "; " + short(t.to) + " drops to " + fmt(t.d) + " days." + (t.air ? " Crosses the South China Sea, so book cold-chain air freight." : " Road transfer, same day."),
+        chip: t.g });
+    });
+
+    // 3) ICU capacity
+    pool.forEach(function (s) {
+      var r = results[s];
+      if (r.overflow > 0) {
+        recs.push({ tier: "critical", icon: "fa-bed-pulse",
+          title: "ICU demand in " + short(s) + " exceeds beds by " + fmt(r.overflow, 0) + "%",
+          body: "Open surge capacity or divert to neighbouring states. Each extra bed raises local blood use, so pair it with a transfer.",
+          chip: fmt(r.occRaw, 0) + "%" });
+      } else if (r.occ >= 90) {
+        recs.push({ tier: "low", icon: "fa-bed-pulse",
+          title: "Prepare surge beds in " + short(s),
+          body: "ICU occupancy is " + fmt(r.occ, 0) + "%. There is little headroom for a new emergency.",
+          chip: fmt(r.occ, 0) + "%" });
+      }
+    });
+
+    if (sim.surge > 0) {
+      var extra = 0;
+      STATES.forEach(function (s) { extra += results[s].groups.ALL.D - project(s, Object.assign({}, sim, { surge: 0 })).groups.ALL.D; });
+      if (extra > 0.5) {
+        recs.push({ tier: "info", icon: "fa-scale-balanced",
+          title: "Surge beds add " + fmtInt(extra) + " units/day of blood demand",
+          body: "More patients reach an ICU bed, and more of them need transfusion. Pre-position stock before opening the extra " + sim.surge + "% capacity.",
+          chip: "+" + sim.surge + "%" });
+      }
+    }
+
+    // 4) Mix imbalance insight
+    if (!recs.length || recs.length < 4) {
+      var sup = {}, tot = 0;
+      pool.forEach(function (s) { GROUPS.forEach(function (g) { sup[g] = (sup[g] || 0) + results[s].groups[g].S; tot += results[s].groups[g].S; }); });
+      var worstG = GROUPS.slice().sort(function (a, b) { return (sup[a] / tot - BENCH[a]) - (sup[b] / tot - BENCH[b]); })[0];
+      var gap = (sup[worstG] / tot - BENCH[worstG]) * 100;
+      if (gap < -0.3 && (!filt.group || filt.group === worstG)) {
+        recs.push({ tier: "info", icon: "fa-bullhorn",
+          title: "Target " + worstG + " donors in recruitment messaging",
+          body: "Group " + worstG + " is " + fmt(Math.abs(gap)) + " points below its demand share" + (filt.state ? " in " + short(filt.state) : " nationally") + ". Recall lapsed " + worstG + " donors first.",
+          chip: fmt(gap) + " pp" });
+      }
+    }
+
+    if (!recs.length) {
+      recs.push({ tier: "healthy", icon: "fa-circle-check",
+        title: "No action needed in this scope",
+        body: "Every " + (filt.group ? "group " + filt.group : "blood group") + " stays above 3 days through day " + H + " and ICUs have headroom. Keep routine collection running.",
+        chip: "OK" });
+    }
+    var rank = { critical: 0, low: 1, info: 2, healthy: 3 };
+    recs.sort(function (a, b) { return rank[a.tier] - rank[b.tier]; });
+    return recs.slice(0, 6);
+  }
+
+  function renderRecs() {
+    var recs = buildRecs();
+    $("recTitle").textContent = "What to do " + (sim.horizon <= 7 ? "this week" : "in the next " + sim.horizon + " days") + (filt.state ? " · " + short(filt.state) : "");
+    var nCrit = recs.filter(function (r) { return r.tier === "critical"; }).length;
+    $("recCount").className = "pill mono " + (nCrit ? "pill-critical" : "pill-adequate");
+    $("recCount").textContent = nCrit ? nCrit + " urgent" : recs.length + " items";
+    $("recs").innerHTML = recs.map(function (r) {
+      return '<div class="rec rec-' + r.tier + ' fade-in"><div class="rec-ico"><i class="fa-solid ' + r.icon + '"></i></div>' +
+        '<div class="min-w-0"><div class="flex items-start justify-between gap-2"><div class="text-sm font-bold leading-snug">' + r.title + '</div>' +
+        '<span class="mono text-xs ink-3 shrink-0 mt-0.5">' + r.chip + '</span></div>' +
+        '<p class="text-xs ink-2 leading-relaxed mt-1">' + r.body + '</p></div></div>';
+    }).join("");
+  }
+
+  // ---------------- Table ----------------
+  function renderTable() {
+    var rows = hospitals.filter(function (h) { return !filt.state || h.state === filt.state; })
+      .map(function (h) { return { h: h, n: hospitalNow(h) }; })
+      .sort(function (a, b) { return b.n.ratio - a.n.ratio; });
+    $("tblTitle").textContent = "Hospitals ranked by pressure" + (filt.state ? " · " + short(filt.state) : "");
+    $("tblBody").innerHTML = rows.map(function (x) {
+      var h = x.h, n = x.n;
+      var icuCol = n.icu >= 90 ? COLORS.critical : n.icu >= 75 ? COLORS.low : COLORS.healthy;
+      var hl = filt.group && h.mostNeeded === filt.group ? ' class="hl"' : "";
+      return '<tr data-state="' + h.state + '"' + hl + '>' +
+        '<td class="font-semibold">' + h.name + '</td>' +
+        '<td class="ink-2">' + h.district + ', ' + short(h.state) + '</td>' +
+        '<td class="mono"><span class="bar-mini"><i style="width:' + n.icu + '%;background:' + icuCol + '"></i></span>' + fmt(n.icu, 0) + '%</td>' +
+        '<td class="mono ink-2">' + fmt(n.vent, 0) + '%</td>' +
+        '<td class="mono ink-2">' + fmt(n.blood) + (LIVE_BLOOD.states[h.state].proxyOf ? ' <span style="color:' + COLORS.low + '">*</span>' : '') + '</td>' +
+        '<td><span class="mono font-bold inline-flex items-center gap-1.5"><span class="inline-block w-2.5 h-2.5 rounded-sm" style="background:' + GCOLOR[h.mostNeeded] + '"></span>' + h.mostNeeded + '</span></td>' +
+        '<td><span class="pill ' + Q_PILL[n.quadrant] + '">' + Q_LABEL[n.quadrant] + '</span></td></tr>';
+    }).join("");
+    $("tblBody").querySelectorAll("tr").forEach(function (tr) {
+      tr.addEventListener("click", function () { setState(tr.dataset.state); window.scrollTo({ top: 0, behavior: "smooth" }); });
+    });
+  }
+
+  // ======================================================================
+  // 8. MAP (real coastline, Natural Earth 1:50m, pre-projected)
+  // ======================================================================
+  var VB_W = 900, VB_H = 440, PAD = 34, LNG_MIN = 99.0, LNG_MAX = 119.4, LAT_MIN = 0.6, LAT_MAX = 7.6;
+  function xS(lng) { return PAD + (lng - LNG_MIN) / (LNG_MAX - LNG_MIN) * (VB_W - 2 * PAD); }
+  function yS(lat) { return PAD + (LAT_MAX - lat) / (LAT_MAX - LAT_MIN) * (VB_H - 2 * PAD); }
+  var NS = "http://www.w3.org/2000/svg";
+  function el(tag, attrs) { var e = document.createElementNS(NS, tag); for (var k in attrs) e.setAttribute(k, attrs[k]); return e; }
+
+  var MALAYSIA_PATHS = ["M79.6,95.6 L80.4,93.1 L81.4,85.0 L82.0,83.3 L83.6,82.6 L85.5,82.8 L88.9,89.8 L97.8,94.2 L100.5,95.2 L104.0,93.5 L105.6,94.6 L107.1,96.4 L108.1,101.4 L110.5,106.0 L115.2,105.4 L116.8,106.0 L117.8,106.1 L118.7,110.2 L119.1,117.3 L118.7,121.3 L115.3,127.2 L114.9,131.2 L116.6,133.7 L118.8,136.3 L120.2,138.3 L121.6,138.0 L123.4,136.6 L125.0,133.2 L126.0,130.2 L132.0,126.9 L138.2,123.9 L139.1,124.3 L140.1,125.6 L142.0,129.9 L143.2,130.8 L145.0,131.2 L147.8,130.7 L151.1,128.3 L153.0,123.7 L153.8,120.1 L158.6,113.8 L159.2,109.2 L160.5,106.2 L167.6,108.2 L170.2,109.9 L178.1,126.3 L188.6,137.9 L193.0,142.2 L196.4,144.3 L201.1,150.5 L205.2,158.2 L214.1,180.1 L215.6,189.8 L216.3,204.4 L214.3,226.6 L211.9,237.6 L212.4,242.8 L215.6,250.8 L214.7,258.3 L215.3,264.6 L215.0,282.0 L216.9,287.1 L219.1,290.4 L230.3,300.8 L231.2,304.5 L236.6,317.7 L246.9,346.3 L249.7,359.2 L249.4,362.7 L248.2,364.0 L245.1,365.3 L242.6,362.8 L241.7,361.0 L242.0,358.8 L241.0,356.6 L238.6,354.0 L237.2,351.6 L237.6,355.5 L237.6,360.5 L234.5,361.0 L230.4,359.4 L225.4,360.8 L219.6,367.1 L216.8,367.3 L214.6,361.9 L213.4,358.3 L211.6,355.7 L193.0,342.6 L186.1,339.2 L178.7,329.4 L162.3,318.4 L151.9,307.7 L147.5,301.1 L136.7,295.2 L132.2,288.4 L129.8,287.0 L127.6,284.5 L130.0,277.9 L129.0,270.9 L127.8,265.0 L120.3,253.3 L116.6,245.2 L109.4,237.2 L106.6,232.5 L104.0,227.1 L105.6,225.2 L107.2,224.1 L105.8,220.1 L101.8,213.3 L99.9,205.5 L99.9,190.7 L94.2,169.8 L89.2,141.0 L90.1,130.8 L88.7,119.8 L85.5,109.3 L81.2,101.8 L79.6,95.6 Z","M791.6,216.3 L790.0,216.2 L786.4,215.1 L779.4,209.4 L772.2,207.4 L761.8,207.2 L755.8,206.5 L753.4,207.3 L751.4,207.3 L749.9,206.2 L748.3,205.6 L744.3,209.0 L742.4,207.9 L740.3,206.5 L737.0,206.0 L732.9,206.5 L728.2,209.9 L723.2,206.8 L721.7,206.8 L720.7,207.6 L718.5,211.8 L714.2,215.1 L712.2,221.0 L710.8,226.6 L709.8,228.5 L709.4,239.5 L708.8,244.8 L709.8,251.8 L709.7,254.7 L707.7,259.2 L707.5,260.3 L706.6,267.4 L706.9,269.3 L706.7,271.6 L705.1,276.6 L702.2,278.0 L699.2,278.8 L696.6,277.0 L694.2,279.8 L691.3,284.1 L690.1,286.9 L690.1,289.6 L690.4,291.3 L689.8,293.2 L689.7,295.1 L689.8,297.9 L691.9,299.1 L693.9,301.5 L693.8,303.8 L692.8,305.4 L690.1,307.9 L685.3,312.9 L679.9,317.3 L677.8,318.3 L677.1,320.3 L676.8,323.0 L677.9,328.9 L679.0,330.6 L679.7,332.7 L679.0,335.1 L678.4,337.2 L676.3,338.6 L674.4,339.5 L673.7,341.3 L672.7,348.3 L671.5,352.0 L668.8,357.4 L668.0,359.9 L666.6,360.7 L661.5,358.1 L656.9,359.7 L650.9,360.7 L645.8,360.5 L641.8,361.6 L639.0,364.5 L635.9,368.2 L632.7,370.9 L630.4,372.2 L626.0,368.4 L623.6,368.7 L619.7,367.4 L610.1,363.0 L607.8,361.8 L605.3,361.6 L604.5,360.4 L605.0,358.3 L604.5,355.7 L602.6,354.6 L583.7,355.0 L578.1,357.4 L574.4,359.3 L571.8,361.4 L571.1,366.8 L569.4,371.8 L567.4,377.1 L561.1,378.7 L556.4,384.2 L554.8,384.8 L551.7,384.0 L548.1,383.5 L545.7,385.1 L543.2,385.0 L535.1,382.4 L527.6,382.0 L523.2,383.3 L520.8,383.8 L507.8,391.3 L503.2,392.1 L501.5,391.0 L499.0,387.9 L495.4,385.0 L487.4,374.7 L484.3,372.3 L482.2,369.8 L480.3,366.8 L477.7,363.6 L475.2,361.4 L471.8,356.9 L468.6,352.1 L467.8,343.5 L465.2,341.9 L464.2,339.7 L463.9,337.1 L467.5,330.1 L470.2,337.5 L471.2,339.1 L477.1,344.1 L481.9,346.6 L487.2,347.6 L492.6,347.8 L494.9,347.4 L496.9,346.5 L499.0,347.5 L510.1,355.7 L514.5,357.0 L519.1,356.5 L521.0,357.2 L527.4,363.4 L529.4,364.1 L532.6,363.7 L528.5,360.9 L525.8,358.9 L524.7,355.1 L525.2,351.0 L527.9,348.4 L529.6,345.5 L530.4,336.8 L531.6,332.4 L533.6,328.2 L534.3,324.2 L532.0,321.1 L531.4,315.8 L531.9,311.5 L533.3,308.4 L535.5,310.4 L537.7,312.2 L539.9,312.0 L541.5,311.4 L541.8,309.1 L541.4,305.1 L541.5,297.9 L544.3,292.1 L548.9,288.1 L553.1,286.2 L569.0,283.0 L594.3,274.7 L601.7,271.5 L604.5,269.9 L606.7,267.5 L610.7,260.2 L618.0,248.6 L623.2,239.1 L634.0,225.2 L642.7,212.4 L643.9,210.0 L645.2,203.0 L645.3,199.6 L645.1,196.3 L646.2,194.8 L648.0,193.8 L648.4,193.8 L649.6,195.3 L652.7,197.3 L654.9,199.9 L656.4,203.3 L657.5,206.5 L657.5,209.1 L659.0,211.4 L662.8,211.7 L664.0,214.5 L666.6,219.3 L669.1,222.7 L670.6,224.0 L672.5,223.4 L675.3,220.2 L677.4,216.3 L678.8,211.2 L677.6,210.3 L679.7,206.5 L680.0,204.4 L679.1,202.5 L677.9,200.7 L677.5,196.0 L676.8,189.9 L676.2,187.2 L677.8,185.2 L681.0,182.7 L684.3,179.8 L687.6,177.5 L687.8,181.7 L687.6,188.6 L688.7,194.4 L690.9,204.5 L693.5,205.9 L696.6,206.8 L698.4,206.6 L699.5,205.9 L699.8,205.1 L697.9,201.0 L697.5,191.6 L695.9,185.4 L693.4,179.3 L692.3,177.5 L701.9,175.8 L703.9,173.8 L707.7,169.6 L709.2,167.2 L710.2,161.8 L705.5,158.7 L703.8,154.6 L703.6,150.2 L709.2,142.1 L711.1,140.1 L712.0,143.0 L714.5,143.7 L716.7,143.8 L719.1,143.6 L722.3,139.6 L724.0,133.7 L729.8,125.3 L731.8,118.8 L733.0,112.2 L747.5,91.3 L749.3,88.0 L758.0,67.1 L759.0,66.4 L761.3,68.5 L761.9,75.1 L761.6,78.0 L760.3,82.3 L759.4,86.8 L760.5,86.7 L764.6,84.0 L768.8,76.7 L771.3,70.3 L773.4,67.5 L777.5,69.1 L778.4,70.2 L778.1,74.7 L778.5,77.4 L780.1,83.0 L783.7,86.4 L788.5,88.7 L793.1,91.8 L794.5,93.8 L795.4,96.3 L796.4,100.5 L796.4,104.5 L793.2,108.6 L794.7,115.1 L794.4,118.9 L793.3,122.2 L788.5,125.2 L801.4,122.2 L804.7,120.5 L809.1,116.2 L811.4,119.9 L813.6,126.3 L811.8,128.0 L806.3,130.4 L806.0,131.3 L807.9,134.6 L810.2,134.3 L814.8,132.1 L819.0,128.6 L821.1,128.6 L823.3,129.3 L827.6,131.6 L829.9,133.4 L831.8,135.8 L833.1,140.7 L838.0,142.4 L848.0,149.4 L849.7,150.0 L851.8,150.1 L856.9,149.3 L858.8,150.2 L860.2,152.7 L860.6,155.8 L860.4,159.1 L859.9,161.6 L858.7,163.7 L855.0,166.8 L846.1,171.0 L836.4,174.1 L831.4,173.9 L824.5,171.2 L822.0,171.5 L819.5,172.8 L816.4,181.3 L822.1,189.8 L831.8,198.6 L833.1,200.8 L832.8,203.5 L831.2,205.2 L829.2,206.0 L823.7,207.5 L818.2,208.5 L813.8,210.1 L809.2,212.0 L804.7,211.4 L798.3,207.4 L796.6,207.1 L794.7,209.1 L792.8,214.7 L791.6,216.3 Z","M247.0,292.7 L245.0,293.3 L243.9,292.9 L243.2,290.8 L244.8,286.1 L245.4,285.3 L247.0,290.4 L247.0,292.7 Z","M86.5,156.5 L85.5,157.9 L82.6,157.1 L83.2,148.4 L84.8,147.3 L87.4,148.9 L88.6,150.4 L86.5,156.5 Z","M68.6,94.3 L71.4,100.0 L70.1,102.5 L69.4,103.2 L67.6,102.4 L66.0,104.6 L64.4,105.0 L62.7,101.1 L60.8,99.5 L60.4,96.8 L63.0,96.3 L64.5,97.2 L67.4,95.4 L68.6,94.3 Z","M774.0,56.9 L771.5,59.8 L770.6,56.4 L770.7,52.0 L774.1,48.0 L779.0,47.2 L779.5,50.5 L779.0,54.2 L777.9,56.1 L774.0,56.9 Z","M128.5,279.1 L126.5,280.0 L126.5,278.6 L126.8,276.7 L128.2,274.8 L129.0,275.9 L128.5,279.1 Z","M539.3,309.5 L538.0,310.3 L536.1,308.3 L535.7,292.2 L537.0,290.8 L537.9,291.0 L538.9,293.9 L538.8,300.9 L538.9,307.2 L539.3,309.5 Z","M804.2,215.4 L798.5,216.4 L794.5,216.3 L795.3,214.5 L795.1,212.0 L797.0,211.4 L799.2,211.9 L804.2,215.4 Z"];
+
+  var mapSvg = $("map"), mapLayer = el("g", { id: "mapLayer" });
+  mapSvg.appendChild(mapLayer);
+  for (var gx = 100; gx <= LNG_MAX; gx += 2) mapLayer.appendChild(el("line", { "class": "gridl", x1: xS(gx), y1: PAD, x2: xS(gx), y2: VB_H - PAD }));
+  for (var gy = 1; gy <= LAT_MAX; gy += 2) mapLayer.appendChild(el("line", { "class": "gridl", x1: PAD, y1: yS(gy), x2: VB_W - PAD, y2: yS(gy) }));
+  MALAYSIA_PATHS.forEach(function (d) { mapLayer.appendChild(el("path", { "class": "land", d: d })); });
+  mapLayer.appendChild(el("text", { "class": "maplabel", x: xS(100.2), y: yS(7.15) })).textContent = "PENINSULAR MALAYSIA";
+  mapLayer.appendChild(el("text", { "class": "maplabel", x: xS(111.8), y: yS(7.15) })).textContent = "SABAH & SARAWAK";
+  var nodeLayer = el("g", {});
+  mapLayer.appendChild(nodeLayer);
+  var mapTip = $("mapTip"), mapWrap = document.querySelector(".map-wrap");
+  var nodes = hospitals.map(function (h) {
+    var g = el("g", { "class": "hnode", tabindex: "0", role: "button", "aria-label": h.name });
+    var cx = xS(h.lng), cy = yS(h.lat);
+    var ring = el("circle", { "class": "pulse", cx: cx, cy: cy, r: 8, fill: "none", stroke: COLORS.critical, "stroke-width": 1.5, opacity: 0 });
+    var hit = el("circle", { cx: cx, cy: cy, r: 16, fill: "transparent" });
+    var dot = el("circle", { "class": "dot", cx: cx, cy: cy, r: 6, fill: COLORS.healthy, stroke: "rgba(6,10,17,0.9)", "stroke-width": 1.5 });
+    g.appendChild(ring); g.appendChild(hit); g.appendChild(dot);
+    g.addEventListener("mousemove", function (e) { showTip(e, h); });
+    g.addEventListener("mouseleave", function () { mapTip.classList.remove("show"); });
+    g.addEventListener("click", function () { setState(filt.state === h.state ? "" : h.state); });
+    g.addEventListener("keydown", function (e) { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setState(filt.state === h.state ? "" : h.state); } });
+    nodeLayer.appendChild(g);
+    return { h: h, g: g, dot: dot, ring: ring };
+  });
+  function showTip(e, h) {
+    var n = hospitalNow(h), rect = mapWrap.getBoundingClientRect();
+    mapTip.innerHTML = '<div class="font-bold mb-0.5">' + h.name + '</div><div class="ink-3">' + h.district + ', ' + short(h.state) + '</div>' +
+      '<div class="mono mt-1.5">ICU ' + fmt(n.icu, 0) + '% · Vent ' + fmt(n.vent, 0) + '%</div>' +
+      '<div class="mono">Blood index ' + fmt(n.blood) + ' · needs ' + h.mostNeeded + '</div>' +
+      '<div class="mt-1.5"><span class="pill ' + Q_PILL[n.quadrant] + '">' + Q_LABEL[n.quadrant] + '</span></div>';
+    var x = e.clientX - rect.left, y = e.clientY - rect.top;
+    mapTip.style.left = Math.max(6, Math.min(x + 14, rect.width - 250)) + "px";
+    mapTip.style.top = Math.max(6, Math.min(y - 10, rect.height - 120)) + "px";
+    mapTip.classList.add("show");
+  }
+  $("mapLegend").innerHTML = ["critical", "stable", "watch", "healthy"].map(function (q) {
+    return '<span class="inline-flex items-center gap-1.5"><span class="inline-block w-2.5 h-2.5 rounded-full" style="background:' + Q_COLOR[q] + '"></span>' + Q_LABEL[q] + '</span>';
+  }).join("");
+
+  function renderMap() {
+    nodes.forEach(function (nd) {
+      var n = hospitalNow(nd.h);
+      var r = 4 + Math.max(0, n.icu - 20) / 80 * 8;
+      nd.dot.setAttribute("r", r.toFixed(1));
+      nd.dot.setAttribute("fill", Q_COLOR[n.quadrant]);
+      nd.ring.setAttribute("r", r.toFixed(1));
+      nd.ring.setAttribute("stroke", Q_COLOR[n.quadrant]);
+      nd.ring.style.display = n.quadrant === "critical" ? "" : "none";
+      nd.g.style.opacity = filt.state && filt.state !== nd.h.state ? 0.18 : 1;
+    });
+    if (filt.state) {
+      var cap = STATE_CAPITALS[filt.state], scale = BORNEO[filt.state] ? 1.8 : 2.4;
+      var px = xS(cap[1]), py = yS(cap[0]);
+      mapLayer.style.transformOrigin = "0 0";
+      mapLayer.style.transform = "translate(" + (VB_W / 2 - px * scale) + "px," + (VB_H / 2 - py * scale) + "px) scale(" + scale + ")";
+    } else {
+      mapLayer.style.transform = "";
+    }
+    var counts = { critical: 0, stable: 0, watch: 0, healthy: 0 };
+    hospitals.forEach(function (h) { if (!filt.state || h.state === filt.state) counts[hospitalNow(h).quadrant]++; });
+    $("mapFocus").innerHTML = (filt.state ? '<b class="ink-2">' + filt.state + '</b> · ' : '<b class="ink-2">Nationwide</b> · ') +
+      '<span style="color:' + COLORS.critical + '">' + counts.critical + ' critical zone' + (counts.critical === 1 ? '' : 's') + '</span>, ' +
+      counts.stable + ' high-demand, ' + counts.watch + ' watch, ' + counts.healthy + ' healthy. ' +
+      'A critical zone has above-median ICU occupancy and below-median blood supply per unit of demand.';
+  }
+
+  // ======================================================================
+  // 9. SIMULATOR UI
+  // ======================================================================
+  var scenarioSel = $("scenarioSel"), regionSel = $("regionSel");
+  Object.keys(SCENARIOS).forEach(function (k) { var o = document.createElement("option"); o.value = k; o.textContent = SCENARIOS[k].label; scenarioSel.appendChild(o); });
+  Object.keys(REGIONS).forEach(function (k) { var o = document.createElement("option"); o.value = k; o.textContent = REGIONS[k].label; regionSel.appendChild(o); });
+
+  function syncSimUi() {
+    scenarioSel.value = sim.scenario; regionSel.value = sim.region;
+    $("sevRng").value = sim.severity; $("spikeRng").value = sim.spike; $("surgeRng").value = sim.surge; $("horizonRng").value = sim.horizon;
+    $("sevRng").disabled = sim.scenario === "none";
+    $("spikeRng").disabled = sim.region === "none";
+    $("sevVal").textContent = sim.scenario === "none" ? "—" : sim.severity + "%";
+    $("spikeVal").textContent = sim.region === "none" ? "—" : "+" + sim.spike + "%";
+    $("surgeVal").textContent = "+" + sim.surge + "% beds";
+    $("horizonVal").textContent = sim.horizon + " days";
+    $("horizonEcho").textContent = sim.horizon;
+    $("scenarioNote").textContent = SCENARIOS[sim.scenario].note;
+    ["sevRng", "spikeRng", "surgeRng", "horizonRng"].forEach(function (id) { setRangeFill($(id)); });
+    var active = !isBaseline();
+    $("simBadge").className = "pill " + (active ? "pill-critical" : "pill-adequate");
+    $("simBadge").innerHTML = '<i class="fa-solid ' + (active ? "fa-flask" : "fa-circle-dot") + '"></i>' + (active ? "Scenario active" : "Baseline");
+  }
+
+  function renderSimDelta() {
+    var g = gKey();
+    var s1 = scopeSeries(results, g), s0 = scopeSeries(baseResults, g);
+    var dDays = s1[sim.horizon] - s0[sim.horizon];
+    var pool = filt.state ? [filt.state] : STATES;
+    var occ1 = 0, occ0 = 0, dem1 = 0, dem0 = 0;
+    pool.forEach(function (s) { occ1 += results[s].occ; occ0 += baseResults[s].occ; dem1 += results[s].groups[g].D; dem0 += baseResults[s].groups[g].D; });
+    occ1 /= pool.length; occ0 /= pool.length;
+    function cell(label, val, good) {
+      var col = Math.abs(parseFloat(val)) < 0.05 ? COLORS.ink2 : (good ? COLORS.healthy : COLORS.critical);
+      return '<div><div class="text-[0.65rem] uppercase tracking-wider ink-3 font-bold">' + label + '</div><div class="mono text-sm font-semibold mt-0.5" style="color:' + col + '">' + val + '</div></div>';
+    }
+    var dOcc = occ1 - occ0, dDem = (dem1 / dem0 - 1) * 100;
+    $("simDelta").innerHTML =
+      cell("Cover Δ", (dDays >= 0 ? "+" : "") + fmt(dDays) + " d", dDays >= 0) +
+      cell("ICU Δ", (dOcc >= 0 ? "+" : "") + fmt(dOcc, 0) + " pts", dOcc <= 0) +
+      cell("Demand Δ", (dDem >= 0 ? "+" : "") + fmt(dDem, 0) + "%", dDem <= 0);
+  }
+
+  scenarioSel.addEventListener("change", function () { sim.scenario = this.value; update(); });
+  regionSel.addEventListener("change", function () { sim.region = this.value; update(); });
+  $("sevRng").addEventListener("input", function () { sim.severity = +this.value; update(); });
+  $("spikeRng").addEventListener("input", function () { sim.spike = +this.value; update(); });
+  $("surgeRng").addEventListener("input", function () { sim.surge = +this.value; update(); });
+  $("horizonRng").addEventListener("input", function () { sim.horizon = +this.value; update(); });
+  $("presetBtn").addEventListener("click", function () {
+    sim = { scenario: "ecflood", severity: 90, region: "central", spike: 60, surge: 20, horizon: 10 };
+    update();
+  });
+  $("simReset").addEventListener("click", function () {
+    sim = { scenario: "none", severity: 60, region: "none", spike: 40, surge: 0, horizon: 7 };
+    update();
+  });
+
+  // ======================================================================
+  // 10. FILTERS
+  // ======================================================================
+  var stateSel = $("stateSel");
+  STATES.forEach(function (s) { var o = document.createElement("option"); o.value = s; o.textContent = s + (LIVE_BLOOD.states[s].proxyOf ? " (proxy)" : ""); stateSel.appendChild(o); });
+  stateSel.addEventListener("change", function () { setState(this.value); });
+
+  var grpSeg = $("grpSeg");
+  [""].concat(GROUPS).forEach(function (g) {
+    var b = document.createElement("button");
+    b.type = "button"; b.dataset.group = g;
+    b.innerHTML = g ? '<span class="sw" style="background:' + GCOLOR[g] + '"></span>' + g : "All";
+    b.addEventListener("click", function () { filt.group = g; update(); });
+    grpSeg.appendChild(b);
+  });
+  document.querySelectorAll("#stockMode button").forEach(function (b) {
+    b.addEventListener("click", function () { if (b.disabled) return; stockMode = b.dataset.mode; saveUi(); renderStock(); });
+  });
+  $("resetAll").addEventListener("click", function () {
+    filt = { state: "", group: "" };
+    sim = { scenario: "none", severity: 60, region: "none", spike: 40, surge: 0, horizon: 7 };
+    update();
+  });
+  function setState(s) { filt.state = s; update(); }
+
+  function syncFilterUi() {
+    stateSel.value = filt.state;
+    grpSeg.querySelectorAll("button").forEach(function (b) { b.setAttribute("aria-pressed", String(b.dataset.group === filt.group)); });
+  }
+
+  // ======================================================================
+  // 11. ARCHITECTURE INSPECTOR
+  // ======================================================================
+  function esc(s) { return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;"); }
+  // Tiny highlighter: comments, strings, keywords, function names.
+  function hl(code, lang) {
+    var kw = lang === "py"
+      ? /\b(def|return|import|from|as|class|for|in|if|else|elif|with|async|await|None|True|False|lambda|yield)\b/g
+      : /\b(export|default|async|await|function|return|const|let|import|from|if|else|type|interface|new)\b/g;
+    var out = [], re = lang === "py" ? /(#[^\n]*)|("(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*')/g : /(\/\/[^\n]*)|("(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'|`[^`]*`)/g;
+    var last = 0, m;
+    function plain(t) { return esc(t).replace(kw, '<span class="k">$1</span>').replace(/\b([a-zA-Z_][\w]*)(?=\()/g, '<span class="f">$1</span>'); }
+    while ((m = re.exec(code))) {
+      out.push(plain(code.slice(last, m.index)));
+      out.push(m[1] ? '<span class="c">' + esc(m[1]) + '</span>' : '<span class="s">' + esc(m[2]) + '</span>');
+      last = re.lastIndex;
+    }
+    out.push(plain(code.slice(last)));
+    return out.join("");
+  }
+
+  var ARCH_SVG =
+    '<div class="scroll-x"><svg class="arch-svg" viewBox="0 0 980 330" width="100%" style="min-width:760px" role="img" aria-label="Architecture diagram: data sources to Python pipeline to FastAPI to Next.js">' +
+    '<defs><marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#5ee6d0"/></marker></defs>' +
+    // columns
+    col(20, "DATA SOURCES", "#75839a", [["data.gov.my", "blood_donations_state.parquet"], ["KKMNOW / MOH", "bed & ICU utilisation"], ["Facility master", "hospitals, beds, GPS"]]) +
+    col(262, "PYTHON PIPELINE", "#ff8fa0", [["Ingest & clean", "pandas · pyarrow"], ["Feature engineering", "rolling 7d, lags, ICU load"], ["Forecast model", "scikit-learn · GBR"]]) +
+    col(504, "FASTAPI SERVICE", "#8cb8ff", [["REST endpoints", "/stock /vulnerability /forecast"], ["Simulate", "POST /simulate · Pydantic"], ["Cache", "Redis · 15 min TTL"]]) +
+    col(746, "NEXT.JS FRONTEND", "#5ee6d0", [["App Router pages", "RSC + client islands"], ["Charts & map", "Chart.js · Leaflet"], ["Surge simulator", "debounced POST"]]) +
+    arrow(232, 262) + arrow(474, 504) + arrow(716, 746) +
+    '<text x="490" y="318" text-anchor="middle" fill="#75839a" font-size="11">Nightly cron (GitHub Actions) retrains and writes model.joblib + features.parquet → API hot-reloads</text>' +
+    '</svg></div>';
+  function col(x, title, color, boxes) {
+    var s = '<text x="' + (x + 107) + '" y="22" text-anchor="middle" fill="' + color + '" font-size="11" font-weight="700" letter-spacing="1.5">' + title + '</text>';
+    s += '<rect x="' + x + '" y="34" width="214" height="262" rx="16" fill="rgba(148,178,222,0.05)" stroke="rgba(172,198,236,0.14)"/>';
+    boxes.forEach(function (b, i) {
+      var y = 48 + i * 82;
+      s += '<rect x="' + (x + 12) + '" y="' + y + '" width="190" height="68" rx="11" fill="rgba(6,10,17,0.65)" stroke="' + color + '" stroke-opacity="0.45"/>' +
+        '<text x="' + (x + 26) + '" y="' + (y + 29) + '" fill="#e8eef7" font-size="13" font-weight="700">' + b[0] + '</text>' +
+        '<text x="' + (x + 26) + '" y="' + (y + 49) + '" fill="#aab6c8" font-size="11">' + b[1] + '</text>';
+      if (i < boxes.length - 1) s += '<line x1="' + (x + 107) + '" y1="' + (y + 68) + '" x2="' + (x + 107) + '" y2="' + (y + 82) + '" stroke="' + color + '" stroke-opacity="0.5"/>';
+    });
+    return s;
+  }
+  function arrow(x1, x2) { return '<line x1="' + (x1 + 2) + '" y1="165" x2="' + (x2 - 4) + '" y2="165" stroke="#5ee6d0" stroke-width="2" marker-end="url(#ah)"/>'; }
+
+  var CODE_FRONT = [
+    "// app/dashboard/page.tsx — server component fetches the first paint",
+    "import { StockChart } from \"@/components/StockChart\";",
+    "import { SurgeSimulator } from \"@/components/SurgeSimulator\";",
+    "",
+    "export default async function Dashboard({ searchParams }) {",
+    "  const q = new URLSearchParams(searchParams).toString();",
+    "  const stock = await fetch(`${process.env.API_URL}/api/v1/stock?${q}`, {",
+    "    next: { revalidate: 900 },   // matches the API cache TTL",
+    "  }).then((r) => r.json());",
+    "  return (",
+    "    <main className=\"grid gap-4 xl:grid-cols-12\">",
+    "      <StockChart data={stock} />",
+    "      <SurgeSimulator initial={stock.params} />",
+    "    </main>",
+    "  );",
+    "}"
+  ].join("\n");
+  var CODE_SIM = [
+    "// components/SurgeSimulator.tsx — client island",
+    "\"use client\";",
+    "export function SurgeSimulator({ initial }) {",
+    "  const [params, setParams] = useState(initial);",
+    "  const debounced = useDebounce(params, 250);",
+    "  const { data } = useSWR([\"/api/v1/simulate\", debounced], ([url, body]) =>",
+    "    fetch(url, { method: \"POST\", body: JSON.stringify(body) }).then((r) => r.json())",
+    "  );",
+    "  return <SliderPanel value={params} onChange={setParams} result={data} />;",
+    "}"
+  ].join("\n");
+  var CODE_API = [
+    "# app/main.py — FastAPI microservice",
+    "from fastapi import FastAPI, Query",
+    "from pydantic import BaseModel, Field",
+    "from .model import Forecaster",
+    "",
+    "app = FastAPI(title=\"BLifeline API\", version=\"1.0\")",
+    "fc = Forecaster.load(\"artifacts/model.joblib\")",
+    "",
+    "class SimParams(BaseModel):",
+    "    scenario: str = \"none\"",
+    "    severity: float = Field(0.6, ge=0, le=1)",
+    "    region: str | None = None",
+    "    spike: float = Field(0.0, ge=0, le=1.5)",
+    "    surge: float = Field(0.0, ge=0, le=0.5)",
+    "    horizon: int = Field(7, ge=1, le=21)",
+    "",
+    "@app.get(\"/api/v1/stock\")",
+    "async def stock(state: str | None = None, group: str | None = Query(None, pattern=\"^(A|B|O|AB)$\")):",
+    "    return fc.days_of_stock(state=state, group=group)",
+    "",
+    "@app.get(\"/api/v1/vulnerability\")",
+    "async def vulnerability(horizon: int = 7):",
+    "    return fc.vulnerability_index(horizon=horizon)",
+    "",
+    "@app.post(\"/api/v1/simulate\")",
+    "async def simulate(p: SimParams):",
+    "    return fc.simulate(**p.model_dump())"
+  ].join("\n");
+  var CODE_ML = [
+    "# pipeline/train.py — nightly job",
+    "import pandas as pd",
+    "from sklearn.pipeline import Pipeline",
+    "from sklearn.compose import ColumnTransformer",
+    "from sklearn.preprocessing import OneHotEncoder, StandardScaler",
+    "from sklearn.ensemble import GradientBoostingRegressor",
+    "from sklearn.model_selection import TimeSeriesSplit, cross_val_score",
+    "import joblib",
+    "",
+    "df = pd.read_parquet(\"https://storage.data.gov.my/healthcare/blood_donations_state.parquet\")",
+    "df = build_features(df, icu=load_icu(), lags=[1, 7, 14], rolling=[7, 28])",
+    "",
+    "pre = ColumnTransformer([",
+    "    (\"cat\", OneHotEncoder(handle_unknown=\"ignore\"), [\"state\", \"blood_group\", \"dow\"]),",
+    "    (\"num\", StandardScaler(), [\"lag_1\", \"lag_7\", \"roll_7\", \"roll_28\", \"icu_occ\", \"holiday\"]),",
+    "])",
+    "model = Pipeline([(\"pre\", pre), (\"gbr\", GradientBoostingRegressor(n_estimators=400, max_depth=3, learning_rate=0.05))])",
+    "",
+    "cv = TimeSeriesSplit(n_splits=5)",
+    "print(\"MAE\", -cross_val_score(model, X, y, cv=cv, scoring=\"neg_mean_absolute_error\").mean())",
+    "model.fit(X, y)                     # y = next-day donations per state × group",
+    "joblib.dump(model, \"artifacts/model.joblib\")"
+  ].join("\n");
+
+  var ENDPOINTS = {
+    stock: { method: "GET", path: function () { return "/api/v1/stock" + qs({ state: filt.state, group: filt.group }); } },
+    vulnerability: { method: "GET", path: function () { return "/api/v1/vulnerability?horizon=" + sim.horizon; } },
+    forecast: { method: "GET", path: function () { return "/api/v1/forecast" + qs({ state: filt.state || "Kedah", group: filt.group || "O", horizon: sim.horizon }); } },
+    simulate: { method: "POST", path: function () { return "/api/v1/simulate"; } }
+  };
+  function qs(o) { var p = Object.keys(o).filter(function (k) { return o[k] !== "" && o[k] != null; }).map(function (k) { return k + "=" + encodeURIComponent(o[k]); }); return p.length ? "?" + p.join("&") : ""; }
+  function r2(n) { return Math.round(n * 100) / 100; }
+  function apiResponse(key) {
+    if (key === "stock") {
+      var pool = filt.state ? [filt.state] : STATES, gs = filt.group ? [filt.group] : GROUPS;
+      return { as_of: LIVE_BLOOD.asOf, horizon_days: sim.horizon, items: pool.map(function (s) {
+        var o = { state: s, proxy_of: results[s].proxyOf, groups: {} };
+        gs.forEach(function (g) { var r = results[s].groups[g]; o.groups[g] = { days_now: r2(r.daysNow), days_at_horizon: r2(r.daysH), supply_per_day: r2(r.S), demand_per_day: r2(r.D), status: daysTier(r.daysH) }; });
+        return o;
+      }) };
+    }
+    if (key === "vulnerability") {
+      return { horizon_days: sim.horizon, weights: { icu_occupancy: 0.45, ventilator: 0.15, blood_cover: 0.40 },
+        items: STATES.map(function (s) { var v = vulnIndex(results[s], filt.group); return { state: s, index: r2(v), tier: viTier(v), icu_occupancy: r2(results[s].occ), ventilator: r2(results[s].vent) }; })
+          .sort(function (a, b) { return b.index - a.index; }) };
+    }
+    if (key === "forecast") {
+      var st = filt.state || "Kedah", g = filt.group || "O", gr = results[st].groups[g];
+      return { state: st, group: g, model: "stock-flow (browser) · GBR in production", series: gr.days.map(function (d, t) { return { day: t, days_of_stock: r2(d), baseline: r2(baseResults[st].groups[g].days[t]) }; }) };
+    }
+    return { request: { scenario: sim.scenario, severity: sim.severity / 100, region: sim.region === "none" ? null : sim.region, spike: sim.spike / 100, surge: sim.surge / 100, horizon: sim.horizon },
+      response: { national_cover_days: r2(nationalSeries(results, gKey())[sim.horizon]), baseline_cover_days: r2(nationalSeries(baseResults, gKey())[sim.horizon]),
+        states_below_3_days: STATES.filter(function (s) { return results[s].groups[gKey()].daysH < CRIT; }),
+        recommendations: buildRecs().map(function (r) { return { severity: r.tier, action: r.title }; }) } };
+  }
+
+  var archTab = "overview", apiKey = "stock";
+  function renderArch() {
+    var body = $("archBody"), html = "";
+    if (archTab === "overview") {
+      html = ARCH_SVG +
+        '<div class="grid grid-cols-1 md:grid-cols-3 gap-3 mt-4">' +
+        layerCard("fa-brands fa-react", "Next.js 14 frontend", "#5ee6d0", "Server components render the first paint from cached API data. The simulator and filters are client islands that call the API as sliders move.", ["Next.js 14", "React 18", "Tailwind", "Chart.js", "Leaflet + OSM", "SWR"]) +
+        layerCard("fa-solid fa-bolt", "FastAPI microservice", "#8cb8ff", "A stateless Python service. It loads the trained model at start-up, validates every request with Pydantic and caches hot queries in Redis.", ["FastAPI", "Pydantic v2", "Uvicorn", "Redis", "Docker"]) +
+        layerCard("fa-brands fa-python", "Data science pipeline", "#ff8fa0", "A nightly job ingests data.gov.my parquet, builds lag and rolling features, and retrains a scikit-learn gradient-boosting forecaster with time-series cross-validation.", ["pandas", "pyarrow", "scikit-learn", "joblib", "GitHub Actions"]) +
+        '</div>' +
+        '<div class="glass-flat p-3 mt-4 text-xs ink-2 leading-relaxed"><b class="ink">This page</b> packs all three layers into one file: the stock-flow model below the charts is the same maths the API returns, so the <b>Try the API</b> tab shows real responses for your current filters and scenario.</div>';
+    } else if (archTab === "frontend") {
+      html = '<div class="grid grid-cols-1 lg:grid-cols-2 gap-4"><div class="flex flex-col gap-3">' +
+        '<p class="text-sm ink-2 leading-relaxed">Routes live under <span class="mono">app/</span>. The dashboard page is a server component that fetches with <span class="mono">revalidate: 900</span>, matching the API cache. Interactive pieces opt in with <span class="mono">"use client"</span>.</p>' +
+        tree(["app/", "  layout.tsx", "  dashboard/page.tsx", "  api/proxy/[...path]/route.ts", "components/", "  StockChart.tsx", "  VulnerabilityChart.tsx", "  HospitalMap.tsx", "  SurgeSimulator.tsx", "  ArchitectureModal.tsx", "lib/", "  api.ts  · typed client (openapi-typescript)"]) +
+        '</div><div class="flex flex-col gap-3"><pre class="code">' + hl(CODE_FRONT, "ts") + '</pre><pre class="code">' + hl(CODE_SIM, "ts") + '</pre></div></div>';
+    } else if (archTab === "api") {
+      html = '<div class="grid grid-cols-1 lg:grid-cols-5 gap-4"><div class="lg:col-span-2 flex flex-col gap-3">' +
+        '<p class="text-sm ink-2 leading-relaxed">One small service with versioned routes. OpenAPI docs are generated at <span class="mono">/docs</span>, and the frontend types come straight from that schema.</p>' +
+        '<div class="flex flex-col gap-2">' +
+        route("GET", "/api/v1/stock", "Days of stock by state and group") +
+        route("GET", "/api/v1/vulnerability", "ICU vulnerability index, ranked") +
+        route("GET", "/api/v1/forecast", "Daily projection for one state and group") +
+        route("POST", "/api/v1/simulate", "Run a surge scenario, returns deltas and actions") +
+        route("GET", "/api/v1/hospitals", "Facility list with ICU and blood index") +
+        route("GET", "/healthz", "Liveness and model version") +
+        '</div></div><div class="lg:col-span-3"><pre class="code">' + hl(CODE_API, "py") + '</pre></div></div>';
+    } else if (archTab === "ml") {
+      html = '<div class="grid grid-cols-1 lg:grid-cols-5 gap-4"><div class="lg:col-span-2 flex flex-col gap-3">' +
+        '<ol class="flex flex-col gap-2 text-sm">' +
+        step(1, "Ingest", "Pull the parquet from data.gov.my and the ICU/bed utilisation tables; join the facility master list.") +
+        step(2, "Clean", "Fill missing days, fold Perlis, Putrajaya and Labuan into proxies, and cap outliers.") +
+        step(3, "Features", "Lags (1, 7, 14 d), rolling means (7, 28 d), day of week, public holidays, ICU occupancy.") +
+        step(4, "Train", "GradientBoostingRegressor inside a scikit-learn Pipeline, scored with 5-fold TimeSeriesSplit.") +
+        step(5, "Forecast", "Predict collections per state × group; demand comes from ICU load and the ABO benchmark.") +
+        step(6, "Publish", "Write model.joblib and features.parquet; the API hot-reloads the new version.") +
+        '</ol><div class="glass-flat p-3 text-xs ink-3 leading-relaxed">In this browser build, collections are held at the latest 7-day average instead of a learned forecast, so every number on the page can be traced back to the source data.</div></div>' +
+        '<div class="lg:col-span-3"><pre class="code">' + hl(CODE_ML, "py") + '</pre></div></div>';
+    } else {
+      var ep = ENDPOINTS[apiKey];
+      html = '<div class="flex flex-col gap-3">' +
+        '<p class="text-sm ink-2">Responses are computed from your current filters and simulator settings. Change them on the dashboard and reopen this tab.</p>' +
+        '<div class="seg" id="apiSeg" role="group" aria-label="Endpoint">' +
+        Object.keys(ENDPOINTS).map(function (k) { return '<button type="button" data-ep="' + k + '" aria-pressed="' + (k === apiKey) + '">' + k + '</button>'; }).join("") +
+        '</div>' +
+        '<div class="flex items-center gap-2 flex-wrap"><span class="pill ' + (ep.method === "GET" ? "pill-healthy" : "pill-low") + ' mono">' + ep.method + '</span><span class="mono text-sm break-all">' + esc(ep.path()) + '</span>' +
+        '<button type="button" class="btn ml-auto" id="copyJson"><i class="fa-regular fa-copy"></i><span>Copy JSON</span></button></div>' +
+        '<pre class="code" id="apiOut" style="max-height:420px">' + esc(JSON.stringify(apiResponse(apiKey), null, 2)) + '</pre></div>';
+    }
+    body.innerHTML = html;
+    if (archTab === "try") {
+      body.querySelectorAll("#apiSeg button").forEach(function (b) { b.addEventListener("click", function () { apiKey = b.dataset.ep; renderArch(); }); });
+      $("copyJson").addEventListener("click", function () {
+        var btn = this, txt = $("apiOut").textContent;
+        function done(ok) { btn.querySelector("span").textContent = ok ? "Copied" : "Select and copy"; setTimeout(function () { btn.querySelector("span").textContent = "Copy JSON"; }, 1800); }
+        try {
+          navigator.clipboard.writeText(txt).then(function () { done(true); }, function () { selectPre(); done(false); });
+        } catch (e) { selectPre(); done(false); }
+      });
+    }
+  }
+  function selectPre() { var r = document.createRange(); r.selectNodeContents($("apiOut")); var s = window.getSelection(); s.removeAllRanges(); s.addRange(r); }
+  function layerCard(icon, title, color, text, chips) {
+    return '<div class="glass-flat p-4 flex flex-col gap-2"><div class="flex items-center gap-2 font-bold"><i class="' + icon + '" style="color:' + color + '"></i>' + title + '</div>' +
+      '<p class="text-xs ink-2 leading-relaxed">' + text + '</p><div class="flex flex-wrap gap-1.5 mt-1">' + chips.map(function (c) { return '<span class="stack-chip">' + c + '</span>'; }).join("") + '</div></div>';
+  }
+  function tree(lines) { return '<pre class="code">' + lines.map(function (l) { return esc(l); }).join("\n") + '</pre>'; }
+  function route(m, p, d) {
+    return '<div class="glass-flat px-3 py-2 flex items-center gap-2 flex-wrap"><span class="pill ' + (m === "GET" ? "pill-healthy" : "pill-low") + ' mono">' + m + '</span><span class="mono text-xs">' + p + '</span><span class="text-xs ink-3 w-full">' + d + '</span></div>';
+  }
+  function step(n, t, d) {
+    return '<li class="grid gap-3" style="grid-template-columns:28px 1fr"><span class="mono text-xs font-bold w-7 h-7 rounded-lg grid place-items-center" style="background:rgba(255,143,160,0.12);color:#ff8fa0">' + n + '</span><div><div class="font-bold">' + t + '</div><div class="text-xs ink-2 leading-relaxed">' + d + '</div></div></li>';
+  }
+
+  var archModal = $("archModal"), lastFocus = null;
+  function openArch() {
+    lastFocus = document.activeElement;
+    archModal.hidden = false;
+    document.body.style.overflow = "hidden";
+    renderArch();
+    $("closeArch").focus();
+  }
+  function closeArch() {
+    archModal.hidden = true;
+    document.body.style.overflow = "";
+    if (lastFocus) lastFocus.focus();
+  }
+  $("openArch").addEventListener("click", openArch);
+  $("footArch").addEventListener("click", openArch);
+  $("closeArch").addEventListener("click", closeArch);
+  archModal.addEventListener("click", function (e) { if (e.target === archModal) closeArch(); });
+  document.addEventListener("keydown", function (e) {
+    if (archModal.hidden) return;
+    if (e.key === "Escape") closeArch();
+    if (e.key === "Tab") {
+      var f = archModal.querySelectorAll("button, [href], select, input");
+      if (!f.length) return;
+      var first = f[0], last = f[f.length - 1];
+      if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+      else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+    }
+  });
+  document.querySelectorAll("#archTabs button").forEach(function (b) {
+    b.addEventListener("click", function () {
+      archTab = b.dataset.tab;
+      document.querySelectorAll("#archTabs button").forEach(function (x) { x.setAttribute("aria-selected", String(x === b)); });
+      renderArch();
+    });
+  });
+
+  // ======================================================================
+  // 12. UPDATE LOOP
+  // ======================================================================
+  var raf = null;
+  function update() {
+    syncFilterUi();
+    syncSimUi();
+    if (raf) cancelAnimationFrame(raf);
+    raf = requestAnimationFrame(function () {
+      raf = null;
+      runModel();
+      renderScope();
+      renderKpis();
+      renderStock();
+      renderVI();
+      renderProjection();
+      renderMix();
+      renderRecs();
+      renderTable();
+      renderMap();
+      renderSimDelta();
+    });
+  }
+
+  $("asOf").textContent = LIVE_BLOOD.asOf;
+  update();
+})();
+</script>
+</body>
+</html>
