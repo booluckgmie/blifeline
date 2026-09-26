@@ -4,6 +4,7 @@ Attach in this order:
 1. `01-dashboard-surge-simulator.jpg`
 2. `02-icu-vulnerability-hospitals.jpg`
 3. `03-forecast-recs-table.jpg`
+4. `04-hospital-map.jpg` (optional — close-up of the hospital map)
 
 ---
 
