@@ -187,6 +187,73 @@
   .stack-chip { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 8px; font-size: 0.74rem; font-weight: 600; background: rgba(255,255,255,0.05); border: 1px solid var(--glass-line); color: var(--ink-2); }
   .arch-svg text { font-family: "Manrope", system-ui, sans-serif; }
 
+  /* Top-level views */
+  .viewtabs { display: flex; gap: 2px; overflow-x: auto; margin-top: 8px; margin-bottom: -11px; }
+  .viewtabs a { display: inline-flex; align-items: center; gap: 8px; padding: 10px 12px; font-weight: 700; font-size: 0.84rem; color: var(--ink-3); border-bottom: 2px solid transparent; white-space: nowrap; text-decoration: none; }
+  .viewtabs a:hover { color: var(--ink); }
+  .viewtabs a[aria-current="page"] { color: var(--ink); border-bottom-color: var(--accent); }
+
+  .ctl-input { background: rgba(6,10,17,0.6); color: var(--ink); border: 1px solid var(--glass-line-strong); border-radius: 10px; padding: 8px 12px; font: 600 0.84rem "Manrope", system-ui, sans-serif; min-height: 40px; width: 200px; max-width: 100%; }
+  .ctl-input::placeholder { color: var(--ink-3); font-weight: 500; }
+
+  /* Zone cards + alerts */
+  .zone { display: grid; gap: 6px; padding: 11px 12px; border-radius: 12px; background: rgba(255,92,99,0.05); border: 1px solid rgba(255,92,99,0.22); cursor: pointer; text-align: left; width: 100%; transition: border-color .15s, background .15s; }
+  .zone:hover { border-color: rgba(255,92,99,0.5); background: rgba(255,92,99,0.09); }
+  .zone.calm { background: rgba(255,255,255,0.025); border-color: var(--glass-line); }
+  .zone.calm:hover { border-color: var(--glass-line-strong); }
+  .alert-row { display: grid; grid-template-columns: 18px 1fr; gap: 8px; padding: 9px 0; border-bottom: 1px solid rgba(172,198,236,0.08); font-size: 0.8rem; line-height: 1.45; }
+  .alert-row:last-child { border-bottom: none; }
+
+  /* Sortable table headers */
+  .tbl th button { font: inherit; color: inherit; letter-spacing: inherit; text-transform: inherit; display: inline-flex; align-items: center; gap: 5px; }
+  .tbl th button:hover { color: var(--ink); }
+  .tbl th[aria-sort="ascending"] button, .tbl th[aria-sort="descending"] button { color: var(--accent); }
+  .tbl tbody tr.top5 td:first-child { box-shadow: inset 3px 0 0 var(--critical); }
+
+  /* Detail sheet (map, matrix, table, zone cards) */
+  .sheet-back { position: fixed; inset: 0; z-index: 50; background: rgba(2,5,10,0.5); }
+  .sheet { position: fixed; z-index: 51; left: 0; right: 0; bottom: 0; max-height: 72vh; overflow-y: auto;
+    padding: 18px 18px calc(18px + env(safe-area-inset-bottom, 0px)); border-radius: 18px 18px 0 0;
+    background: linear-gradient(160deg, rgba(20,32,52,0.96), rgba(9,15,26,0.98)); border: 1px solid var(--glass-line-strong);
+    box-shadow: 0 -20px 60px -10px rgba(0,0,0,0.8); animation: sheetin .25s cubic-bezier(.2,.8,.2,1) both; }
+  @keyframes sheetin { from { transform: translateY(30px); opacity: 0.4; } to { transform: none; opacity: 1; } }
+  @media (min-width: 700px) {
+    .sheet { left: auto; right: 24px; bottom: calc(24px + env(safe-area-inset-bottom, 0px)); width: 360px; border-radius: 18px; }
+    .sheet-back { background: transparent; }
+  }
+
+  /* Donate */
+  .venue { display: flex; flex-direction: column; gap: 6px; padding: 14px; }
+  .vtype { align-self: flex-start; font-size: 0.64rem; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; padding: 3px 9px; border-radius: 999px; }
+  .vtype.national { background: rgba(224,72,91,0.16); color: #ff8fa0; }
+  .vtype.suite { background: rgba(57,135,229,0.18); color: #8cb8ff; }
+  .vtype.hospital { background: rgba(94,230,208,0.12); color: var(--accent); }
+  .link-chip { display: inline-flex; align-items: center; gap: 6px; font-size: 0.76rem; font-weight: 700; color: var(--accent); text-decoration: none; border: 1px solid var(--glass-line-strong); border-radius: 8px; padding: 6px 10px; background: transparent; }
+  .link-chip:hover { border-color: var(--accent); }
+  .callout { border-left: 3px solid var(--low); background: rgba(242,193,78,0.07); border-radius: 0 12px 12px 0; padding: 12px 16px; font-size: 0.86rem; line-height: 1.65; color: var(--ink-2); }
+  .callout.live { border-left-color: var(--healthy); background: rgba(63,209,143,0.07); }
+  .callout b, .callout em { color: var(--ink); }
+
+  /* Methodology */
+  .method { max-width: 860px; }
+  .method h2 { font-family: "Sora", "Manrope", sans-serif; font-size: 1.2rem; font-weight: 700; letter-spacing: -0.01em; margin: 34px 0 10px; text-wrap: balance; }
+  .method h2:first-child { margin-top: 0; }
+  .method h3 { font-size: 0.95rem; font-weight: 700; margin: 22px 0 6px; color: var(--ink); }
+  .method p, .method li { font-size: 0.9rem; line-height: 1.7; color: var(--ink-2); max-width: 70ch; }
+  .method p { margin: 0 0 10px; }
+  .method ul { list-style: disc; padding-left: 20px; margin: 0 0 12px; }
+  .method li b, .method p b { color: var(--ink); }
+  .method code { font-family: "JetBrains Mono", monospace; font-size: 0.8em; background: rgba(172,198,236,0.1); padding: 1px 6px; border-radius: 5px; color: var(--ink); }
+  .method a { color: var(--accent); }
+  .formula { font: 500 0.8rem/1.75 "JetBrains Mono", monospace; background: rgba(3,7,13,0.7); border: 1px solid var(--glass-line); border-radius: 12px; padding: 12px 16px; margin: 8px 0 14px; overflow-x: auto; white-space: pre; color: #c9d6e8; }
+  .src { width: 100%; border-collapse: collapse; font-size: 0.82rem; min-width: 620px; }
+  .src th, .src td { text-align: left; vertical-align: top; padding: 9px 12px; border-bottom: 1px solid var(--glass-line); line-height: 1.5; }
+  .src th { font-size: 0.66rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-3); }
+  .src td { color: var(--ink-2); }
+  .steps { display: flex; flex-direction: column; margin: 10px 0 16px; }
+  .steps li { list-style: none; position: relative; padding: 8px 0 10px 22px; border-left: 2px solid var(--glass-line-strong); margin-left: 6px; }
+  .steps li::before { content: ""; position: absolute; left: -6px; top: 14px; width: 10px; height: 10px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 3px rgba(94,230,208,0.15); }
+
   .scroll-x { overflow-x: auto; -webkit-overflow-scrolling: touch; }
   .fade-in { animation: fadein .5s ease both; }
   @keyframes fadein { from { opacity: 0.001; transform: translateY(6px); } to { opacity: 1; transform: none; } }
@@ -210,7 +277,7 @@
           </div>
           <div class="min-w-0">
             <div class="display text-lg font-bold leading-tight">BLifeline <span class="ink-3 font-medium">· Malaysia</span></div>
-            <div class="text-xs ink-3 leading-snug">Blood supply × ICU vulnerability · blood data as of <span class="mono ink-2" id="asOf"></span></div>
+            <div class="text-xs ink-3 leading-snug">Blood supply live from data.gov.my, as of <span class="mono ink-2" id="asOf"></span> · ICU/ventilator: illustrative baseline (<a href="#methodology" class="underline">see Methodology</a>)</div>
           </div>
         </div>
         <div class="flex items-center gap-2 flex-wrap">
@@ -218,11 +285,17 @@
           <button class="btn" id="openArch" type="button"><i class="fa-solid fa-diagram-project"></i><span>Architecture</span></button>
         </div>
       </div>
+      <nav class="viewtabs" aria-label="Sections">
+        <a href="#dashboard" data-view="dashboard" aria-current="page"><i class="fa-solid fa-gauge-high"></i>Dashboard</a>
+        <a href="#donate" data-view="donate"><i class="fa-solid fa-hand-holding-droplet"></i>Donate blood</a>
+        <a href="#methodology" data-view="methodology"><i class="fa-solid fa-book-open"></i>Methodology &amp; data pipeline</a>
+      </nav>
     </div>
   </div>
 </header>
 
 <main class="shell">
+<section id="view-dashboard" data-view-panel="dashboard">
 
   <!-- ============================ HERO + FILTERS ============================ -->
   <section class="pt-6 pb-4 flex flex-col gap-4">
@@ -242,6 +315,20 @@
       <div class="flex items-center gap-2 flex-wrap">
         <span class="eyebrow" id="grpLabel">Blood group</span>
         <div class="seg" id="grpSeg" role="group" aria-labelledby="grpLabel"></div>
+      </div>
+      <div class="flex items-center gap-2">
+        <label for="statusSel" class="eyebrow">Status</label>
+        <select id="statusSel" class="ctl-select">
+          <option value="">All statuses</option>
+          <option value="critical">Critical zone</option>
+          <option value="stable">Stable high-demand</option>
+          <option value="watch">Watch</option>
+          <option value="healthy">Healthy</option>
+        </select>
+      </div>
+      <div class="flex items-center gap-2">
+        <label for="searchIn" class="eyebrow">Hospital</label>
+        <input type="search" id="searchIn" class="ctl-input" placeholder="Search name or district…" autocomplete="off">
       </div>
       <button class="btn ml-auto" id="resetAll" type="button"><i class="fa-solid fa-rotate-left"></i>Reset</button>
       <div id="scopeLine" class="w-full text-xs ink-3 leading-relaxed"></div>
@@ -336,7 +423,7 @@
         <div>
           <div class="eyebrow">Hospital network</div>
           <h2 class="display text-lg font-semibold mt-1">18 major state hospitals</h2>
-          <p class="text-xs ink-3 mt-1">Marker size follows ICU occupancy under the current scenario. Tap one to focus its state.</p>
+          <p class="text-xs ink-3 mt-1">Marker size follows ICU occupancy under the current scenario. Tap one for details; markers outside your filters fade.</p>
         </div>
       </div>
       <div class="map-wrap">
@@ -345,6 +432,35 @@
       </div>
       <div class="flex flex-wrap gap-x-4 gap-y-1 text-xs ink-2" id="mapLegend"></div>
       <div class="glass-flat p-3 text-xs ink-2 leading-relaxed" id="mapFocus"></div>
+    </article>
+  </section>
+
+  <!-- ============================ ROW 2b: ZONES + ALERTS + MATRIX ============================ -->
+  <section class="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-12 gap-4 mt-4">
+    <article class="glass p-4 md:p-5 xl:col-span-4 flex flex-col gap-3">
+      <div>
+        <div class="eyebrow">Hospital pressure</div>
+        <h2 class="display text-lg font-semibold mt-1" id="zonesTitle">Top 5 critical zones</h2>
+        <p class="text-xs ink-3 mt-1" id="zonesHint">Highest ICU pressure relative to available blood supply. Donors are needed here most today.</p>
+      </div>
+      <div id="zones" class="flex flex-col gap-2"></div>
+    </article>
+    <article class="glass p-4 md:p-5 xl:col-span-3 flex flex-col gap-3">
+      <div>
+        <div class="eyebrow">Donor messaging</div>
+        <h2 class="display text-lg font-semibold mt-1" id="alertsTitle">Localized donor alerts</h2>
+        <p class="text-xs ink-3 mt-1" id="alertsHint">Auto-generated from critical-quadrant hospitals.</p>
+      </div>
+      <div id="alerts"></div>
+    </article>
+    <article class="glass p-4 md:p-5 lg:col-span-2 xl:col-span-5 flex flex-col gap-3">
+      <div>
+        <div class="eyebrow">Vulnerability matrix</div>
+        <h2 class="display text-lg font-semibold mt-1">ICU occupancy vs. blood supply, per hospital</h2>
+        <p class="text-xs ink-3 mt-1">Dashed lines are the medians that split the four quadrants. Blood index is on a log scale because Kuala Lumpur collects about 6× any other state. Tap a dot for details.</p>
+      </div>
+      <div class="chart-box" style="height: 320px;"><canvas id="matrixChart" role="img" aria-label="Scatter of hospitals by ICU occupancy and blood supply index"></canvas></div>
+      <div class="flex flex-wrap gap-x-4 gap-y-1 text-xs ink-2" id="matrixLegend"></div>
     </article>
   </section>
 
@@ -388,13 +504,22 @@
       <div class="flex items-start justify-between gap-3 flex-wrap">
         <div>
           <div class="eyebrow">Facility detail</div>
-          <h2 class="display text-lg font-semibold mt-1" id="tblTitle">Hospitals ranked by pressure</h2>
-          <p class="text-xs ink-3 mt-1">ICU and ventilator figures are an illustrative baseline adjusted by the simulator. Rows matching the selected group's shortage are highlighted.</p>
+          <h2 class="display text-lg font-semibold mt-1" id="tblTitle">All hospitals</h2>
+          <p class="text-xs ink-3 mt-1" id="tblHint">Ranked by vulnerability ratio. Click a column to sort, or a row for details. Red edge marks the national top 5.</p>
         </div>
       </div>
       <div class="scroll-x">
         <table class="tbl">
-          <thead><tr><th>Hospital</th><th>State</th><th>ICU occ.</th><th>Ventilator</th><th>Blood index</th><th>Most needed</th><th>Status</th></tr></thead>
+          <thead><tr id="tblHead">
+            <th data-key="rank" scope="col">#</th>
+            <th data-key="name" scope="col"><button type="button">Hospital<span class="sort-ind" aria-hidden="true">↕</span></button></th>
+            <th data-key="state" scope="col"><button type="button">State / district<span class="sort-ind" aria-hidden="true">↕</span></button></th>
+            <th data-key="icu" scope="col"><button type="button">ICU occ.<span class="sort-ind" aria-hidden="true">↕</span></button></th>
+            <th data-key="vent" scope="col"><button type="button">Ventilator<span class="sort-ind" aria-hidden="true">↕</span></button></th>
+            <th data-key="blood" scope="col"><button type="button">Blood index<span class="sort-ind" aria-hidden="true">↕</span></button></th>
+            <th data-key="mostNeeded" scope="col"><button type="button">Most needed<span class="sort-ind" aria-hidden="true">↕</span></button></th>
+            <th data-key="quadrant" scope="col"><button type="button">Status<span class="sort-ind" aria-hidden="true">↕</span></button></th>
+          </tr></thead>
           <tbody id="tblBody"></tbody>
         </table>
       </div>
@@ -402,10 +527,191 @@
   </section>
 
   <footer class="mt-6 text-xs ink-3 leading-relaxed max-w-4xl">
-    <p><b class="ink-2">Data.</b> Donation volumes are the rolling 7-day average by state and blood group from data.gov.my's <span class="mono">blood_donations_state</span> dataset. Perlis, W.P. Putrajaya and W.P. Labuan are not reported separately and use a scaled proxy of their neighbouring state. ICU and ventilator occupancy is an illustrative baseline modelled on published 2024 state bed-utilisation ranges, not a live feed.</p>
-    <p class="mt-2"><b class="ink-2">Model.</b> Days of stock are modelled: on-shelf inventory is assumed at 7 days of collections, and daily demand is anchored to each state's collection volume, scaled by ICU pressure and the ABO benchmark (O 44%, A 26%, B 23%, AB 7%). Treat outputs as planning signals, not clinical inventory. Open <button type="button" class="underline ink-2" id="footArch">Architecture</button> for the production pipeline.</p>
+    <p><b class="ink-2">Data.</b> Blood donation figures are real, taken from data.gov.my's public <span class="mono">blood_donations_state</span> dataset (rolling 7-day average by state and blood type). Perlis, W.P. Putrajaya and W.P. Labuan aren't reported separately in that source, so they use a scaled-down proxy of their nearest tracked state. ICU/ventilator occupancy is an illustrative baseline, not a live feed, modelled on published 2024 state-level hospital bed utilisation ranges. No public daily hospital-level ICU/ventilator dataset with facility GPS is confirmed to exist. The map shows Malaysia's actual coastline (Natural Earth 1:50m), projected inline with no external map tiles.</p>
+    <p class="mt-2"><b class="ink-2">Model.</b> Days of stock are modelled, not measured inventory. Treat them as planning signals. Full details are on the <a href="#methodology" class="underline ink-2">Methodology &amp; data pipeline</a> tab; the production stack is in <button type="button" class="underline ink-2" id="footArch">Architecture</button>.</p>
   </footer>
+</section>
+
+<!-- ============================ DONATE VIEW ============================ -->
+<section id="view-donate" data-view-panel="donate" hidden>
+  <div class="pt-6 flex flex-col gap-5 max-w-6xl">
+    <div class="max-w-3xl">
+      <div class="eyebrow mb-2">Donate blood</div>
+      <h1 class="display text-2xl md:text-3xl font-bold leading-tight">Turn insight into action</h1>
+      <p class="ink-2 text-sm mt-2 leading-relaxed">Every critical zone on the dashboard needs real donors. Below is a directory of Malaysia's fixed blood donation venues, with real addresses and coordinates, plus how to find this week's mobile blood drives, which change too often to publish as a fixed list.</p>
+    </div>
+
+    <div class="glass p-4 md:p-5">
+      <div class="flex items-start justify-between gap-3 flex-wrap mb-3">
+        <div>
+          <div class="eyebrow">Where donors are needed most</div>
+          <h2 class="display text-lg font-semibold mt-1">Most urgent right now</h2>
+          <p class="text-xs ink-3 mt-1" id="urgentHint"></p>
+        </div>
+      </div>
+      <div id="urgentList" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5"></div>
+    </div>
+
+    <div class="callout">
+      <b>How donation works in Malaysia.</b> Blood donation is centralised through Pusat Darah Negara (PDN) and hospital blood banks (Unit Transfusi Darah). <em>Klinik kesihatan</em> generally don't run their own donation counters. What rotates week to week are PDN's <em>mobile drives</em> at malls, offices and community events, which PDN publishes on its own channels rather than as open data. The static venues below are real and stable. For this week's mobile drives, use the links further down.
+    </div>
+
+    <div class="glass p-3 md:p-4 flex flex-wrap items-center gap-3">
+      <button class="btn btn-accent" id="locateBtn" type="button"><i class="fa-solid fa-location-crosshairs"></i>Find venues near me</button>
+      <div class="flex items-center gap-2">
+        <label for="donateState" class="eyebrow">Or pick a state</label>
+        <select id="donateState" class="ctl-select"><option value="">All states</option></select>
+      </div>
+      <span id="locateStatus" class="text-xs ink-3" role="status"></span>
+    </div>
+
+    <div id="venues" class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3"></div>
+
+    <div class="callout live">
+      <h3 class="display font-semibold text-base mb-2" style="color:var(--ink)">This week's mobile blood drives</h3>
+      <p class="mb-2">PDN posts a new mobile-drive schedule (malls, offices, community centres) on its own channels about once a week. That changes too often for a static list here, so go straight to the source:</p>
+      <ul class="list-disc pl-5 mb-3 flex flex-col gap-1">
+        <li><a class="underline" style="color:var(--accent)" href="https://pdn.gov.my/v2/" target="_blank" rel="noopener">pdn.gov.my</a>, the official site. Look for "Lokasi Derma Darah Bergerak" (mobile donation locations).</li>
+        <li>PDN's official Facebook page. Search "Pusat Darah Negara"; new locations are posted weekly.</li>
+        <li>Call PDN: <span class="mono select-all" style="color:var(--ink)">03-2613 2688</span> <button type="button" class="link-chip ml-1" data-copy="03-2613 2688"><i class="fa-regular fa-copy"></i><span>Copy</span></button></li>
+      </ul>
+      <div class="flex items-center gap-2 flex-wrap">
+        <button class="btn" id="shareBtn" type="button"><i class="fa-solid fa-share-nodes"></i><span>Share with someone who can donate</span></button>
+        <span class="mono text-xs ink-3 select-all" id="shareUrl">https://pdn.gov.my/v2/</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================ METHODOLOGY VIEW ============================ -->
+<section id="view-methodology" data-view-panel="methodology" hidden>
+  <div class="pt-6 grid grid-cols-1 lg:grid-cols-12 gap-6">
+    <article class="method lg:col-span-9">
+      <h2>What this dashboard does</h2>
+      <p>It maps regional blood supply against ICU demand to surface localized <b>critical zones</b>: hospitals where high ICU pressure coincides with a thin extrapolated blood supply. Donation campaigns and blood-bank logistics can then be aimed at the places and blood types that need them most, instead of relying on general awareness appeals. The surge simulator lets planners test how floods, trauma events, outbreaks and extra ICU beds would move those numbers over the next 3 to 21 days.</p>
+
+      <h2>Data sources</h2>
+      <div class="scroll-x">
+        <table class="src">
+          <tr><th>Dataset</th><th>Status in this app</th><th>Source</th></tr>
+          <tr><td>Blood donations by state &amp; blood type</td><td><b style="color:var(--healthy)">Real</b>, fetched at build time, rolling 7-day average (as of <span class="mono" data-asof></span>)</td><td><code>storage.data.gov.my/healthcare/blood_donations_state.parquet</code></td></tr>
+          <tr><td>ICU / ventilator occupancy</td><td>Illustrative baseline (state-level 2024 snapshot + per-hospital jitter)</td><td>Public hospital-bed-utilisation dashboard, data.moh.gov.my</td></tr>
+          <tr><td>Hospital facility list (name, district, lat/lng, beds)</td><td>Sample of 18 major MoH state hospitals</td><td>Assumed reference file. No public facility-level GPS registry is confirmed available.</td></tr>
+          <tr><td>Days of stock</td><td><b style="color:var(--low)">Modelled</b> from donations, ICU pressure and the ABO benchmark</td><td>No public blood-bank inventory feed exists; see the stock-flow model below</td></tr>
+          <tr><td>Malaysia coastline</td><td>Real, static (not live)</td><td>Natural Earth 1:50m admin-0 boundaries, via world-atlas TopoJSON</td></tr>
+          <tr><td>Donation venues</td><td>Real, static addresses and coordinates</td><td>PDN and MoH hospital blood banks</td></tr>
+        </table>
+      </div>
+      <div class="callout live mt-3">
+        <b>Why blood data is live but ICU data isn't.</b> Malaysia's open-data catalogue publishes daily state-level blood donations, so that part of the dashboard reflects real numbers as of the date in the header. A public dataset with <em>daily, hospital-level</em> ICU/ventilator occupancy tied to facility GPS coordinates isn't confirmed to exist yet; KKMNOW's dashboards report ICU and bed utilisation at state level. If your organisation has access to such a feed, the pipeline below is built to accept it unchanged.
+      </div>
+
+      <h2>Pipeline steps</h2>
+      <ol class="steps">
+        <li><b>1. Ingest.</b> Fetch state-level blood donations (by A/B/AB/O) and hospital bed/ICU data; merge with the facility master list (name, district, lat/lng, beds).</li>
+        <li><b>2. Clean.</b> Compute each state's rolling 7-day average donation total, overall and per blood type. Compute ICU and ventilator occupancy % per hospital. Fill Perlis, Putrajaya and Labuan with scaled proxies.</li>
+        <li><b>3. Extrapolate (gravity model).</b> Distribute each state's blood pool to its hospitals, weighted by hospital size and inverse distance from the state capital.</li>
+        <li><b>4. Score.</b> Compute the vulnerability ratio, classify each hospital into one of four quadrants, and identify its most-needed blood type.</li>
+        <li><b>5. Project.</b> Run the stock-flow model per state × blood group to get days of stock over the forecast horizon, then the state ICU vulnerability index.</li>
+        <li><b>6. Alert &amp; recommend.</b> Generate a plain-language donor alert for every critical-quadrant hospital, plus donor-drive, transfer and ICU-capacity recommendations.</li>
+        <li><b>7. Serve.</b> Export as JSON; a FastAPI backend serves the dashboard via <code>/api/health-index</code>, <code>/api/critical-zones</code>, <code>/api/quadrants</code>, <code>/api/alerts</code>, <code>/api/states/{state}</code>, and the forecast routes <code>/api/v1/stock</code>, <code>/api/v1/vulnerability</code>, <code>/api/v1/forecast</code> and <code>POST /api/v1/simulate</code>.</li>
+      </ol>
+
+      <h2>Formulas</h2>
+      <h3>Gravity-model blood availability score</h3>
+      <p>Each hospital's pull on its state's blood pool grows with its bed count and shrinks with distance from the state capital, where the main blood bank sits:</p>
+      <div class="formula">gravity_weight           = beds × exp(−distance_km / decay_km)
+weight_share             = gravity_weight / Σ(gravity_weight in same state)
+blood_availability_score = weight_share × state_blood_supply_7d_avg</div>
+      <p><code>decay_km</code> defaults to 80 km, so hospitals further from the capital receive proportionally less of the state's pool. The same weight share is applied per blood type to get a type-level breakdown. Under a scenario, the score is multiplied by the collection factor and divided by the demand multiplier.</p>
+
+      <h3>Vulnerability ratio (hospital)</h3>
+      <div class="formula">vulnerability_ratio = icu_occupancy_pct / (blood_availability_score + ε)</div>
+      <p>Higher means more critical: high ICU pressure relative to how much blood reaches that hospital. It ranks the Top 5 critical zones and the all-hospitals table.</p>
+
+      <h3>Four-quadrant classification</h3>
+      <p>ICU occupancy and blood availability are each split at the <em>median</em> of the baseline dataset, not at a fixed clinical threshold:</p>
+      <ul>
+        <li><b>Critical zone</b>: high ICU, low blood availability</li>
+        <li><b>Stable high-demand</b>: high ICU, high blood availability</li>
+        <li><b>Watch</b>: low ICU, low blood availability</li>
+        <li><b>Healthy</b>: low ICU, high blood availability</li>
+      </ul>
+      <p>This is the vulnerability matrix on the dashboard; tap any dot for that hospital's detail.</p>
+
+      <h3>Most-needed blood type</h3>
+      <div class="formula">gap(type)        = benchmark_demand_share(type) − supply_share(type)
+most_needed_type = type with the largest gap</div>
+      <p>The benchmark is Malaysia's approximate population-wide ABO distribution (O ≈ 44%, A ≈ 26%, B ≈ 23%, AB ≈ 7%), a commonly cited clinical estimate rather than an official figure. The most under-supplied type drives the alert text for critical-zone hospitals.</p>
+
+      <h3>Days of stock (stock-flow model)</h3>
+      <p>No public inventory feed exists, so stock is modelled per state <i>s</i> and group <i>g</i>:</p>
+      <div class="formula">supply₀(s,g)   = 7-day avg donations/day
+demand₀(s,g)   = Σ_g supply₀(s,g) × benchmark(g) × icu_base(s) / 65
+inventory(0)   = 7 × supply₀(s,g)                       # one week on the shelf
+inventory(t+1) = clamp(inventory(t) + supply − demand, 0, 21 × demand₀)
+days_of_stock  = inventory(t) / demand</div>
+      <p>Demand is anchored to each state's own collection volume (collection networks are sized to local usage), raised where ICU pressure is above the 65% reference and shifted by the ABO benchmark. Status bands: <b style="color:var(--critical)">critical &lt; 3 d</b>, <b style="color:var(--low)">low 3–5 d</b>, <b style="color:var(--adequate)">adequate 5–7 d</b>, <b style="color:var(--healthy)">healthy ≥ 7 d</b>.</p>
+
+      <h3>ICU vulnerability index (state)</h3>
+      <div class="formula">stock_risk = clamp((10.5 − days_at_horizon) / 10.5, 0, 1) × 100
+index      = 0.45 × icu_occupancy + 0.15 × ventilator_occupancy + 0.40 × stock_risk
+             + min(10, 0.5 × overflow_pct)</div>
+      <p>Tiers: critical ≥ 70, elevated 55–69, stable &lt; 55.</p>
+
+      <h3>Surge simulator</h3>
+      <div class="formula">w           = scenario_weight(state) × severity
+spike       = regional_spike if state in region else 0
+load        = 1 + scenario.icu × w + 0.6 × spike
+capacity    = 1 + surge_beds
+occupancy   = min(100, icu_base × load / capacity)
+treated     = min(load, capacity × 100 / icu_base)
+demand      = demand₀ × (1 + scenario.blood × w + spike) × (0.5 + 0.5 × treated)
+supply      = supply₀ × (1 − scenario.collect × w)</div>
+      <p>Opening surge beds lowers occupancy, but more patients then reach an ICU bed, so blood demand rises. The simulator shows that trade-off directly.</p>
+      <div class="scroll-x">
+        <table class="src">
+          <tr><th>Scenario</th><th>ICU load</th><th>Blood demand</th><th>Collection lost</th><th>States (weight)</th></tr>
+          <tbody id="scenarioTable"></tbody>
+        </table>
+      </div>
+
+      <h2>Map</h2>
+      <p>The coastline is Malaysia's real geometry (Peninsular, Sabah and Sarawak, plus Penang, Langkawi, Tioman and a few smaller islands), projected with a simple equirectangular fit to Malaysia's bounding box and drawn as inline SVG. Hospital markers use the same projection, so they land in the right place relative to the coastline. Live raster tiles such as OpenStreetMap aren't used because the published-page policy blocks remote image and tile requests. A self-hosted Next.js deployment can use Leaflet with OSM tiles instead.</p>
+
+      <h2>From prototype to production</h2>
+      <p>This version runs entirely client-side, with data baked in at build time. The production layout (see <button type="button" class="underline" style="color:var(--accent)" data-open-arch>Architecture</button>) splits it into:</p>
+      <ul>
+        <li><code>pipeline/</code>: the daily ETL and training job described above, run as a cron job or GitHub Actions workflow</li>
+        <li><code>app/main.py</code>: a FastAPI backend serving the endpoints listed in step 7</li>
+        <li><code>app/dashboard/page.tsx</code> and <code>HospitalMap.tsx</code>: a Next.js + Leaflet frontend with real OSM tiles</li>
+      </ul>
+      <p>Swapping in a real hospital-level ICU/ventilator feed only needs a column mapping in the ingest step; the rest of the pipeline accepts it unchanged.</p>
+
+      <h2>Limitations</h2>
+      <ul>
+        <li>Days of stock are modelled from donation flow, not read from blood-bank inventory. Rh factor, component type (red cells, platelets, plasma) and expiry are not modelled.</li>
+        <li>ICU occupancy is an illustrative baseline, so hospital rankings show the method working, not today's real ward state.</li>
+        <li>Proxy states (Perlis, Putrajaya, Labuan) inherit their neighbour's blood-type mix.</li>
+        <li>Scenario parameters are planning assumptions, not calibrated epidemiological estimates.</li>
+      </ul>
+    </article>
+    <aside class="lg:col-span-3 hidden lg:block">
+      <div class="glass p-4 sticky" style="top: calc(120px + env(safe-area-inset-top, 0px));">
+        <div class="eyebrow mb-2">On this page</div>
+        <ul class="text-sm flex flex-col gap-1.5 ink-2" id="methodToc"></ul>
+      </div>
+    </aside>
+  </div>
+</section>
 </main>
+
+<!-- ============================ HOSPITAL DETAIL SHEET ============================ -->
+<div class="sheet-back" id="sheetBack" hidden></div>
+<div class="sheet" id="sheet" role="dialog" aria-modal="false" aria-labelledby="sheetTitle" hidden>
+  <button class="btn absolute" style="top:12px;right:12px;min-height:32px;padding:4px 10px" id="sheetClose" type="button" aria-label="Close details"><i class="fa-solid fa-xmark"></i></button>
+  <div id="sheetBody"></div>
+</div>
 
 <!-- ============================ ARCHITECTURE MODAL ============================ -->
 <div class="modal-back" id="archModal" role="dialog" aria-modal="true" aria-labelledby="archTitle" hidden>
@@ -552,7 +858,8 @@
   // ======================================================================
   // 2. STATE
   // ======================================================================
-  var filt = { state: "", group: "" };
+  var filt = { state: "", group: "", status: "", search: "" };
+  var sortKey = "ratio", sortDir = -1;
   var sim = { scenario: "none", severity: 60, region: "none", spike: 40, surge: 0, horizon: 7 };
   var stockMode = "status";
 
@@ -1215,29 +1522,205 @@
     }).join("");
   }
 
-  // ---------------- Table ----------------
-  function renderTable() {
-    var rows = hospitals.filter(function (h) { return !filt.state || h.state === filt.state; })
-      .map(function (h) { return { h: h, n: hospitalNow(h) }; })
-      .sort(function (a, b) { return b.n.ratio - a.n.ratio; });
-    $("tblTitle").textContent = "Hospitals ranked by pressure" + (filt.state ? " · " + short(filt.state) : "");
+  // ---------------- Hospital pool (state · most-needed group · status · search) ----------------
+  function activeHospFilters() { return (filt.state ? 1 : 0) + (filt.group ? 1 : 0) + (filt.status ? 1 : 0) + (filt.search ? 1 : 0); }
+  function inPool(h, n) {
+    if (filt.state && h.state !== filt.state) return false;
+    if (filt.group && h.mostNeeded !== filt.group) return false;
+    if (filt.status && (n || hospitalNow(h)).quadrant !== filt.status) return false;
+    if (filt.search) {
+      var q = filt.search.toLowerCase();
+      if (h.name.toLowerCase().indexOf(q) < 0 && h.district.toLowerCase().indexOf(q) < 0 && h.state.toLowerCase().indexOf(q) < 0) return false;
+    }
+    return true;
+  }
+  function hospitalPool() {
+    return hospitals.map(function (h) { return { h: h, n: hospitalNow(h) }; }).filter(function (x) { return inPool(x.h, x.n); });
+  }
+  function countNote(pool) { return activeHospFilters() ? " Showing " + pool.length + " of " + hospitals.length + " hospitals." : ""; }
+  function alertText(h) { return "Urgent: " + h.mostNeeded + " donors needed in " + h.district + " to support critical care."; }
+
+  // ---------------- Top 5 critical zones + localized alerts ----------------
+  function renderZones(pool) {
+    var top = pool.slice().sort(function (a, b) { return b.n.ratio - a.n.ratio; }).slice(0, 5);
+    $("zonesTitle").textContent = filt.state ? "Top critical zones · " + short(filt.state) : "Top 5 critical zones";
+    $("zonesHint").textContent = "Highest ICU pressure relative to available blood supply." + (activeHospFilters() ? countNote(pool) : " Donors are needed here most today.");
+    if (!top.length) { $("zones").innerHTML = '<p class="text-sm ink-3">No hospitals match the current filters.</p>'; return; }
+    $("zones").innerHTML = top.map(function (x, i) {
+      var h = x.h, n = x.n, crit = n.quadrant === "critical";
+      return '<button type="button" class="zone' + (crit ? '' : ' calm') + '" data-hid="' + h.id + '">' +
+        '<span class="flex items-start justify-between gap-2"><span class="text-sm font-bold leading-snug">' + (i + 1) + '. ' + h.name + '</span>' +
+        '<span class="pill ' + (crit ? 'pill-critical' : 'pill-adequate') + ' mono">' + h.mostNeeded + ' needed</span></span>' +
+        '<span class="text-xs ink-3">' + h.district + ', ' + short(h.state) + '</span>' +
+        '<span class="flex gap-4 text-xs mono ink-2"><span>ICU <b style="color:var(--ink)">' + fmt(n.icu, 0) + '%</b></span><span>Vent <b style="color:var(--ink)">' + fmt(n.vent, 0) + '%</b></span><span>Blood <b style="color:var(--ink)">' + fmt(n.blood) + '</b></span></span>' +
+        (crit ? '<span class="text-xs font-semibold" style="color:var(--critical)">' + alertText(h) + '</span>' : '') +
+        '</button>';
+    }).join("");
+    $("zones").querySelectorAll("[data-hid]").forEach(function (b) { b.addEventListener("click", function () { openDetail(hospitals[+b.dataset.hid]); }); });
+  }
+
+  function renderAlerts(pool) {
+    var al = pool.filter(function (x) { return x.n.quadrant === "critical"; }).sort(function (a, b) { return b.n.ratio - a.n.ratio; });
+    $("alertsTitle").textContent = filt.state ? "Donor alerts · " + short(filt.state) : "Localized donor alerts";
+    $("alertsHint").textContent = "Auto-generated from " + (isBaseline() ? "today's" : "the scenario's") + " critical-quadrant hospitals." + countNote(pool);
+    if (!al.length) { $("alerts").innerHTML = '<p class="text-sm ink-3">No critical-zone alerts match the current filters.</p>'; return; }
+    $("alerts").innerHTML = al.slice(0, 8).map(function (x) {
+      return '<div class="alert-row"><i class="fa-solid fa-bell mt-0.5" style="color:var(--critical)"></i><div><div class="ink">' + alertText(x.h) + '</div>' +
+        '<div class="text-xs ink-3 mono mt-0.5">' + x.h.name + ' · ICU ' + fmt(x.n.icu, 0) + '%</div></div></div>';
+    }).join("");
+  }
+
+  // ---------------- Vulnerability matrix (scatter) ----------------
+  var quadPlugin = {
+    id: "quadrants",
+    beforeDatasetsDraw: function (chart) {
+      var a = chart.chartArea, xs = chart.scales.x, ys = chart.scales.y, ctx = chart.ctx;
+      var cx = xs.getPixelForValue(ICU_CUT), cy = ys.getPixelForValue(BLOOD_CUT);
+      ctx.save();
+      [[a.left, a.top, cx - a.left, cy - a.top, COLORS.healthy, "Healthy", "left", "top"],
+       [cx, a.top, a.right - cx, cy - a.top, COLORS.low, "Stable high-demand", "right", "top"],
+       [a.left, cy, cx - a.left, a.bottom - cy, COLORS.adequate, "Watch", "left", "bottom"],
+       [cx, cy, a.right - cx, a.bottom - cy, COLORS.critical, "Critical zone", "right", "bottom"]].forEach(function (q) {
+        ctx.fillStyle = alpha(q[4], 0.07); ctx.fillRect(q[0], q[1], q[2], q[3]);
+        ctx.fillStyle = alpha(q[4], 0.9); ctx.font = "700 10px JetBrains Mono, monospace";
+        ctx.textAlign = q[6]; ctx.textBaseline = q[7];
+        ctx.fillText(q[5].toUpperCase(), q[6] === "left" ? q[0] + 6 : q[0] + q[2] - 6, q[7] === "top" ? q[1] + 6 : q[1] + q[3] - 6);
+      });
+      ctx.strokeStyle = "rgba(172,198,236,0.35)"; ctx.setLineDash([4, 4]);
+      ctx.beginPath(); ctx.moveTo(cx, a.top); ctx.lineTo(cx, a.bottom); ctx.moveTo(a.left, cy); ctx.lineTo(a.right, cy); ctx.stroke();
+      ctx.restore();
+    }
+  };
+  var matrixChart = new Chart($("matrixChart"), {
+    type: "scatter",
+    data: { datasets: [] },
+    plugins: [quadPlugin],
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      scales: {
+        x: { min: 0, max: 100, grid: { color: COLORS.grid }, ticks: { color: COLORS.ink3, callback: function (v) { return v + "%"; } },
+             title: { display: true, text: "ICU occupancy", color: COLORS.ink3, font: { weight: "600" } } },
+        y: { type: "logarithmic", min: 2, max: 1000, grid: { color: COLORS.grid },
+             ticks: { color: COLORS.ink3, callback: function (v) { return [2, 5, 10, 20, 50, 100, 200, 500, 1000].indexOf(v) >= 0 ? v : ""; } },
+             title: { display: true, text: "Blood supply index (log)", color: COLORS.ink3, font: { weight: "600" } } }
+      },
+      plugins: {
+        legend: { display: false },
+        tooltip: Object.assign({}, tooltipStyle, { callbacks: {
+          title: function (items) { return items[0].raw.h.name; },
+          label: function (c) { var r = c.raw; return [" ICU " + r.x.toFixed(0) + "% · blood index " + r.y.toFixed(1), " " + Q_LABEL[r.q] + " · needs " + r.h.mostNeeded]; }
+        } })
+      },
+      onClick: function (evt, els) { if (els.length) openDetail(matrixChart.data.datasets[0].data[els[0].index].h); },
+      elements: { point: { radius: 6, hoverRadius: 8, hitRadius: 10, borderWidth: 2, borderColor: "#0b1320" } }
+    }
+  });
+  $("matrixLegend").innerHTML = ["critical", "stable", "watch", "healthy"].map(function (q) {
+    return '<span class="inline-flex items-center gap-1.5"><span class="inline-block w-2.5 h-2.5 rounded-full" style="background:' + Q_COLOR[q] + '"></span>' + Q_LABEL[q] + '</span>';
+  }).join("") + '<span class="inline-flex items-center gap-1.5 ink-3">Faded = outside filters</span>';
+  function renderMatrix() {
+    var pts = hospitals.map(function (h) { var n = hospitalNow(h); return { x: n.icu, y: Math.max(2, n.blood), h: h, q: n.quadrant, on: inPool(h, n) }; });
+    matrixChart.data.datasets = [{ label: "Hospitals", data: pts,
+      backgroundColor: pts.map(function (p) { return p.on ? Q_COLOR[p.q] : alpha(Q_COLOR[p.q], 0.15); }),
+      borderColor: pts.map(function (p) { return p.on ? "#0b1320" : "rgba(11,19,32,0.3)"; }) }];
+    matrixChart.update();
+  }
+
+  // ---------------- Table (sortable) ----------------
+  var Q_ORDER = { critical: 0, stable: 1, watch: 2, healthy: 3 };
+  document.querySelectorAll("#tblHead th[data-key]").forEach(function (th) {
+    var btn = th.querySelector("button");
+    if (!btn) return;
+    btn.addEventListener("click", function () {
+      var k = th.dataset.key;
+      if (sortKey === k) sortDir = -sortDir;
+      else { sortKey = k; sortDir = (k === "name" || k === "state" || k === "mostNeeded" || k === "quadrant") ? 1 : -1; }
+      renderTable(hospitalPool());
+    });
+  });
+  function renderTable(pool) {
+    var all = hospitals.map(function (h) { return { h: h, n: hospitalNow(h) }; }).sort(function (a, b) { return b.n.ratio - a.n.ratio; });
+    var rankOf = {}, top5 = {};
+    all.forEach(function (x, i) { rankOf[x.h.id] = i + 1; if (i < 5) top5[x.h.id] = true; });
+    function val(x, k) {
+      if (k === "ratio" || k === "rank") return x.n.ratio;
+      if (k === "name") return x.h.name;
+      if (k === "state") return x.h.state + " " + x.h.district;
+      if (k === "mostNeeded") return x.h.mostNeeded;
+      if (k === "quadrant") return Q_ORDER[x.n.quadrant];
+      return x.n[k];
+    }
+    var rows = pool.slice().sort(function (a, b) {
+      var av = val(a, sortKey), bv = val(b, sortKey);
+      return typeof av === "string" ? sortDir * av.localeCompare(bv) : sortDir * (av - bv);
+    });
+    document.querySelectorAll("#tblHead th[data-key]").forEach(function (th) {
+      var on = th.dataset.key === sortKey;
+      if (on) th.setAttribute("aria-sort", sortDir > 0 ? "ascending" : "descending"); else th.removeAttribute("aria-sort");
+      var ic = th.querySelector(".sort-ind");
+      if (ic) ic.textContent = on ? (sortDir > 0 ? "↑" : "↓") : "↕";
+    });
+    $("tblTitle").textContent = filt.state ? "Hospitals · " + short(filt.state) : "All hospitals";
+    $("tblHint").textContent = "Ranked by vulnerability ratio (# is the national rank). Click a column to sort, or a row for details. Red edge marks the national top 5." + countNote(pool);
+    if (!rows.length) { $("tblBody").innerHTML = '<tr><td colspan="8" class="ink-3">No hospitals match the current filters.</td></tr>'; return; }
     $("tblBody").innerHTML = rows.map(function (x) {
       var h = x.h, n = x.n;
       var icuCol = n.icu >= 90 ? COLORS.critical : n.icu >= 75 ? COLORS.low : COLORS.healthy;
-      var hl = filt.group && h.mostNeeded === filt.group ? ' class="hl"' : "";
-      return '<tr data-state="' + h.state + '"' + hl + '>' +
+      return '<tr data-hid="' + h.id + '"' + (top5[h.id] ? ' class="top5"' : '') + ' tabindex="0">' +
+        '<td class="mono ink-3">' + rankOf[h.id] + '</td>' +
         '<td class="font-semibold">' + h.name + '</td>' +
         '<td class="ink-2">' + h.district + ', ' + short(h.state) + '</td>' +
         '<td class="mono"><span class="bar-mini"><i style="width:' + n.icu + '%;background:' + icuCol + '"></i></span>' + fmt(n.icu, 0) + '%</td>' +
         '<td class="mono ink-2">' + fmt(n.vent, 0) + '%</td>' +
-        '<td class="mono ink-2">' + fmt(n.blood) + (LIVE_BLOOD.states[h.state].proxyOf ? ' <span style="color:' + COLORS.low + '">*</span>' : '') + '</td>' +
+        '<td class="mono ink-2">' + fmt(n.blood) + (LIVE_BLOOD.states[h.state].proxyOf ? ' <span style="color:' + COLORS.low + '" title="Proxy supply">(proxy)</span>' : '') + '</td>' +
         '<td><span class="mono font-bold inline-flex items-center gap-1.5"><span class="inline-block w-2.5 h-2.5 rounded-sm" style="background:' + GCOLOR[h.mostNeeded] + '"></span>' + h.mostNeeded + '</span></td>' +
         '<td><span class="pill ' + Q_PILL[n.quadrant] + '">' + Q_LABEL[n.quadrant] + '</span></td></tr>';
     }).join("");
-    $("tblBody").querySelectorAll("tr").forEach(function (tr) {
-      tr.addEventListener("click", function () { setState(tr.dataset.state); window.scrollTo({ top: 0, behavior: "smooth" }); });
+    $("tblBody").querySelectorAll("tr[data-hid]").forEach(function (tr) {
+      var h = hospitals[+tr.dataset.hid];
+      tr.addEventListener("click", function () { openDetail(h); });
+      tr.addEventListener("keydown", function (e) { if (e.key === "Enter") openDetail(h); });
     });
   }
+
+  // ---------------- Detail sheet ----------------
+  var sheet = $("sheet"), sheetBack = $("sheetBack"), sheetH = null, sheetReturn = null;
+  function openDetail(h, refresh) {
+    if (!sheetH) sheetReturn = document.activeElement;
+    sheetH = h;
+    var n = hospitalNow(h), r = results[h.state], g = r.groups[h.mostNeeded];
+    var t = daysTier(g.daysH);
+    $("sheetBody").innerHTML =
+      '<div class="eyebrow">Hospital detail</div>' +
+      '<h3 class="display text-lg font-bold mt-1 pr-10" id="sheetTitle">' + h.name + '</h3>' +
+      '<div class="text-xs ink-3 mb-2">' + h.district + ', ' + h.state + ' · ' + fmtInt(h.beds) + ' beds</div>' +
+      '<span class="pill ' + Q_PILL[n.quadrant] + '">' + Q_LABEL[n.quadrant] + '</span>' +
+      '<div class="grid grid-cols-2 gap-3 mt-3 text-sm">' +
+        dcell("ICU occupancy", fmt(n.icu, 0) + "%") + dcell("Ventilator", fmt(n.vent, 0) + "%") +
+        dcell("Blood supply index", fmt(n.blood) + (r.proxyOf ? ' <span class="text-xs" style="color:var(--low)">(proxy)</span>' : '')) +
+        dcell("Most-needed type", '<span class="inline-flex items-center gap-1.5"><span class="inline-block w-2.5 h-2.5 rounded-sm" style="background:' + GCOLOR[h.mostNeeded] + '"></span>' + h.mostNeeded + '</span>') +
+        dcell(short(h.state) + " " + h.mostNeeded + " cover", fmt(g.daysNow) + " d → " + '<span style="color:' + COLORS[t] + '">' + fmt(g.daysH) + " d</span>") +
+        dcell("National rank", "#" + (hospitals.map(function (x) { return hospitalNow(x).ratio; }).sort(function (a, b) { return b - a; }).indexOf(n.ratio) + 1) + " of " + hospitals.length) +
+      '</div>' +
+      (n.quadrant === "critical" ? '<div class="mt-3 p-2.5 rounded-lg text-xs font-semibold" style="background:rgba(255,92,99,0.1);color:var(--critical)"><i class="fa-solid fa-bell mr-1.5"></i>' + alertText(h) + '</div>' : '') +
+      '<div class="flex gap-2 flex-wrap mt-4">' +
+        '<button type="button" class="btn" id="sheetFocus"><i class="fa-solid fa-crosshairs"></i>' + (filt.state === h.state ? "Show all states" : "Focus " + short(h.state)) + '</button>' +
+        '<button type="button" class="btn btn-accent" id="sheetDonate"><i class="fa-solid fa-hand-holding-droplet"></i>Donation venues</button>' +
+      '</div>';
+    sheet.hidden = false; sheetBack.hidden = false;
+    $("sheetFocus").addEventListener("click", function () { var st = h.state; closeDetail(); setState(filt.state === st ? "" : st); });
+    $("sheetDonate").addEventListener("click", function () { var st = h.state; closeDetail(); $("donateState").value = st; donatePos = null; renderVenues(); go("donate"); });
+    if (!refresh) $("sheetClose").focus();
+  }
+  function dcell(label, v) { return '<div><div class="text-[0.66rem] uppercase tracking-wider ink-3 font-bold">' + label + '</div><div class="mono font-semibold mt-0.5">' + v + '</div></div>'; }
+  function closeDetail() {
+    sheet.hidden = true; sheetBack.hidden = true; sheetH = null;
+    if (sheetReturn && document.contains(sheetReturn)) { try { sheetReturn.focus(); } catch (e) {} }
+    sheetReturn = null;
+  }
+  $("sheetClose").addEventListener("click", closeDetail);
+  sheetBack.addEventListener("click", closeDetail);
+  document.addEventListener("keydown", function (e) { if (e.key === "Escape" && !sheet.hidden && $("archModal").hidden) closeDetail(); });
 
   // ======================================================================
   // 8. MAP (real coastline, Natural Earth 1:50m, pre-projected)
@@ -1269,8 +1752,8 @@
     g.appendChild(ring); g.appendChild(hit); g.appendChild(dot);
     g.addEventListener("mousemove", function (e) { showTip(e, h); });
     g.addEventListener("mouseleave", function () { mapTip.classList.remove("show"); });
-    g.addEventListener("click", function () { setState(filt.state === h.state ? "" : h.state); });
-    g.addEventListener("keydown", function (e) { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setState(filt.state === h.state ? "" : h.state); } });
+    g.addEventListener("click", function () { mapTip.classList.remove("show"); openDetail(h); });
+    g.addEventListener("keydown", function (e) { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); openDetail(h); } });
     nodeLayer.appendChild(g);
     return { h: h, g: g, dot: dot, ring: ring };
   });
@@ -1298,7 +1781,7 @@
       nd.ring.setAttribute("r", r.toFixed(1));
       nd.ring.setAttribute("stroke", Q_COLOR[n.quadrant]);
       nd.ring.style.display = n.quadrant === "critical" ? "" : "none";
-      nd.g.style.opacity = filt.state && filt.state !== nd.h.state ? 0.18 : 1;
+      nd.g.style.opacity = inPool(nd.h) ? 1 : 0.15;
     });
     if (filt.state) {
       var cap = STATE_CAPITALS[filt.state], scale = BORNEO[filt.state] ? 1.8 : 2.4;
@@ -1309,8 +1792,10 @@
       mapLayer.style.transform = "";
     }
     var counts = { critical: 0, stable: 0, watch: 0, healthy: 0 };
-    hospitals.forEach(function (h) { if (!filt.state || h.state === filt.state) counts[hospitalNow(h).quadrant]++; });
+    var shown = hospitalPool();
+    shown.forEach(function (x) { counts[x.n.quadrant]++; });
     $("mapFocus").innerHTML = (filt.state ? '<b class="ink-2">' + filt.state + '</b> · ' : '<b class="ink-2">Nationwide</b> · ') +
+      (activeHospFilters() ? shown.length + ' of ' + hospitals.length + ' hospitals · ' : '') +
       '<span style="color:' + COLORS.critical + '">' + counts.critical + ' critical zone' + (counts.critical === 1 ? '' : 's') + '</span>, ' +
       counts.stable + ' high-demand, ' + counts.watch + ' watch, ' + counts.healthy + ' healthy. ' +
       'A critical zone has above-median ICU occupancy and below-median blood supply per unit of demand.';
@@ -1393,14 +1878,20 @@
     b.addEventListener("click", function () { if (b.disabled) return; stockMode = b.dataset.mode; saveUi(); renderStock(); });
   });
   $("resetAll").addEventListener("click", function () {
-    filt = { state: "", group: "" };
+    filt = { state: "", group: "", status: "", search: "" };
+    $("searchIn").value = "";
     sim = { scenario: "none", severity: 60, region: "none", spike: 40, surge: 0, horizon: 7 };
     update();
   });
   function setState(s) { filt.state = s; update(); }
 
+  var statusSel = $("statusSel"), searchIn = $("searchIn");
+  statusSel.addEventListener("change", function () { filt.status = this.value; update(); });
+  searchIn.addEventListener("input", function () { filt.search = this.value.trim(); update(); });
+
   function syncFilterUi() {
     stateSel.value = filt.state;
+    statusSel.value = filt.status;
     grpSeg.querySelectorAll("button").forEach(function (b) { b.setAttribute("aria-pressed", String(b.dataset.group === filt.group)); });
   }
 
@@ -1591,6 +2082,11 @@
         route("GET", "/api/v1/forecast", "Daily projection for one state and group") +
         route("POST", "/api/v1/simulate", "Run a surge scenario, returns deltas and actions") +
         route("GET", "/api/v1/hospitals", "Facility list with ICU and blood index") +
+        route("GET", "/api/health-index", "Hospital vulnerability ratios (prototype route)") +
+        route("GET", "/api/critical-zones", "Top critical-zone hospitals") +
+        route("GET", "/api/quadrants", "Four-quadrant classification per hospital") +
+        route("GET", "/api/alerts", "Localized donor alert text") +
+        route("GET", "/api/states/{state}", "One state's summary") +
         route("GET", "/healthz", "Liveness and model version") +
         '</div></div><div class="lg:col-span-3"><pre class="code">' + hl(CODE_API, "py") + '</pre></div></div>';
     } else if (archTab === "ml") {
@@ -1694,14 +2190,158 @@
       renderProjection();
       renderMix();
       renderRecs();
-      renderTable();
+      var pool = hospitalPool();
+      renderZones(pool);
+      renderAlerts(pool);
+      renderMatrix();
+      renderTable(pool);
       renderMap();
+      if (!$("view-donate").hidden) { renderUrgent(); renderVenues(); }
+      if (sheetH) openDetail(sheetH, true);
       renderSimDelta();
     });
   }
 
+  // ======================================================================
+  // 12b. VIEWS — Dashboard / Donate / Methodology (plain #hash deep links)
+  // ======================================================================
+  var VIEWS = ["dashboard", "donate", "methodology"];
+  function go(view, noScroll) {
+    if (VIEWS.indexOf(view) < 0) view = "dashboard";
+    document.querySelectorAll("[data-view-panel]").forEach(function (p) { p.hidden = p.dataset.viewPanel !== view; });
+    document.querySelectorAll(".viewtabs a").forEach(function (a) {
+      if (a.dataset.view === view) a.setAttribute("aria-current", "page"); else a.removeAttribute("aria-current");
+    });
+    if (location.hash.slice(1) !== view) { try { history.replaceState(null, "", "#" + view); } catch (e) {} }
+    if (view === "donate" && results[STATES[0]]) { renderUrgent(); renderVenues(); }
+    if (!noScroll) window.scrollTo(0, 0);
+  }
+  document.addEventListener("click", function (e) {
+    var a = e.target.closest && e.target.closest('a[href^="#"]');
+    if (!a) return;
+    var v = a.getAttribute("href").slice(1);
+    if (VIEWS.indexOf(v) >= 0) { e.preventDefault(); go(v); }
+  });
+  window.addEventListener("hashchange", function () { go(location.hash.slice(1)); });
+  document.querySelectorAll("[data-open-arch]").forEach(function (b) { b.addEventListener("click", openArch); });
+
+  // ======================================================================
+  // 12c. DONATE — fixed venues, nearest-to-me, urgency from the model
+  // ======================================================================
+  var FIXED_VENUES = [
+    { name: "Pusat Darah Negara (PDN) — Headquarters", type: "national", state: "W.P. Kuala Lumpur",
+      address: "Jalan Tun Razak, 50400 Kuala Lumpur", lat: 3.17314, lng: 101.70646, phone: "03-2613 2688",
+      hours: "Mon–Fri ~7:30am–8pm · Sat–Sun ~8am–4/6pm (call ahead to confirm)" },
+    { name: "PDN Donation Suite, Mid Valley Megamall", type: "suite", state: "W.P. Kuala Lumpur",
+      address: "Mid Valley Megamall, Lingkaran Syed Putra, 59200 Kuala Lumpur", lat: 3.1177, lng: 101.6774, phone: null,
+      hours: "Daily ~10am–6pm (call ahead to confirm)" },
+    { name: "Suite Derma Darah PUSPANITA, Putrajaya", type: "suite", state: "W.P. Putrajaya",
+      address: "Puspanitapuri, Presint 10, Putrajaya", lat: 2.928, lng: 101.687, phone: null,
+      hours: "Daily ~10am–6pm (call ahead to confirm)" }
+  ].concat(hospitals.map(function (h) {
+    return { name: h.name + " — Hospital Blood Bank", type: "hospital", state: h.state,
+      address: h.district + ", " + h.state, lat: h.lat, lng: h.lng, phone: null,
+      hours: "Varies by hospital (call ahead to confirm)" };
+  }));
+  var VTYPE = { national: "National centre", suite: "Donation suite", hospital: "Hospital blood bank" };
+  var donatePos = null;
+  var donateState = $("donateState");
+  STATES.forEach(function (s) { var o = document.createElement("option"); o.value = s; o.textContent = s; donateState.appendChild(o); });
+  donateState.addEventListener("change", function () { $("locateStatus").textContent = ""; renderVenues(); });
+
+  function stateNeed(s) {
+    // Lowest projected cover across groups in this state.
+    var best = null;
+    GROUPS.forEach(function (g) { var d = results[s].groups[g].daysH; if (!best || d < best.d) best = { g: g, d: d }; });
+    return best;
+  }
+  function renderUrgent() {
+    var list = [];
+    STATES.forEach(function (s) { GROUPS.forEach(function (g) { list.push({ s: s, g: g, d: results[s].groups[g].daysH }); }); });
+    list.sort(function (a, b) { return a.d - b.d; });
+    $("urgentHint").textContent = "Lowest projected cover on day " + sim.horizon + (isBaseline() ? "" : " under the current simulator scenario") + ". Tap one to list venues in that state.";
+    $("urgentList").innerHTML = list.slice(0, 4).map(function (x) {
+      var t = daysTier(x.d);
+      return '<button type="button" class="glass-flat p-3 text-left flex flex-col gap-1 hover:border-white/20" data-ustate="' + x.s + '">' +
+        '<span class="flex items-center justify-between gap-2"><span class="font-bold text-sm">' + short(x.s) + '</span>' + pill(t, fmt(x.d) + " d") + '</span>' +
+        '<span class="text-xs ink-2 inline-flex items-center gap-1.5"><span class="inline-block w-2.5 h-2.5 rounded-sm" style="background:' + GCOLOR[x.g] + '"></span>Group <b class="mono">' + x.g + '</b> donors needed</span></button>';
+    }).join("");
+    $("urgentList").querySelectorAll("[data-ustate]").forEach(function (b) {
+      b.addEventListener("click", function () { donateState.value = b.dataset.ustate; donatePos = null; $("locateStatus").textContent = ""; renderVenues(); $("venues").scrollIntoView({ behavior: "smooth", block: "start" }); });
+    });
+  }
+  function renderVenues() {
+    var list = FIXED_VENUES.filter(function (v) { return !donateState.value || v.state === donateState.value; });
+    list = list.map(function (v) { return Object.assign({}, v, { dist: donatePos ? haversineKm(donatePos.lat, donatePos.lng, v.lat, v.lng) : null }); });
+    if (donatePos) list.sort(function (a, b) { return a.dist - b.dist; });
+    if (!list.length) { $("venues").innerHTML = '<p class="text-sm ink-3">No venues match this filter.</p>'; return; }
+    $("venues").innerHTML = list.map(function (v) {
+      var need = stateNeed(v.state), t = daysTier(need.d);
+      var maps = "https://www.google.com/maps/search/?api=1&query=" + v.lat + "," + v.lng;
+      return '<div class="glass venue" style="border-radius:14px">' +
+        '<span class="vtype ' + v.type + '">' + VTYPE[v.type] + '</span>' +
+        '<div class="font-bold text-[0.95rem] leading-snug">' + v.name + '</div>' +
+        '<div class="text-xs ink-2 leading-relaxed">' + v.address + '</div>' +
+        '<div class="text-xs ink-3">' + v.hours + (v.dist != null ? ' · <b style="color:var(--ink)">' + fmt(v.dist) + ' km away</b>' : '') + '</div>' +
+        '<div class="text-xs inline-flex items-center gap-1.5 flex-wrap">' + pill(t, "Lowest: " + need.g, TIER_ICON[t]) + '<span class="ink-3">' + short(v.state) + ' ' + need.g + ' cover ' + fmt(need.d) + ' d by day ' + sim.horizon + '</span></div>' +
+        '<div class="flex gap-2 flex-wrap mt-1"><a class="link-chip" href="' + maps + '" target="_blank" rel="noopener"><i class="fa-solid fa-diamond-turn-right"></i>Directions</a>' +
+        (v.phone ? '<span class="mono text-xs self-center select-all">' + v.phone + '</span><button type="button" class="link-chip" data-copy="' + v.phone + '"><i class="fa-regular fa-copy"></i><span>Copy number</span></button>' : '') +
+        '</div></div>';
+    }).join("");
+  }
+  $("locateBtn").addEventListener("click", function () {
+    var st = $("locateStatus");
+    if (!navigator.geolocation) { st.textContent = "Location isn't available here. Pick a state instead."; return; }
+    st.textContent = "Getting your location…";
+    try {
+      navigator.geolocation.getCurrentPosition(function (pos) {
+        donatePos = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+        donateState.value = "";
+        st.textContent = "Showing venues nearest to you.";
+        renderVenues();
+      }, function () { st.textContent = "Couldn't get your location. Pick a state instead."; }, { timeout: 8000 });
+    } catch (e) { st.textContent = "Couldn't get your location. Pick a state instead."; }
+  });
+  function copyText(btn, text) {
+    var label = btn.querySelector("span"), orig = label ? label.textContent : "";
+    function done(msg) { if (label) { label.textContent = msg; setTimeout(function () { label.textContent = orig; }, 1800); } }
+    try { navigator.clipboard.writeText(text).then(function () { done("Copied"); }, function () { done("Select and copy"); }); }
+    catch (e) { done("Select and copy"); }
+  }
+  document.addEventListener("click", function (e) {
+    var b = e.target.closest && e.target.closest("[data-copy]");
+    if (b) copyText(b, b.dataset.copy);
+  });
+  $("shareBtn").addEventListener("click", function () {
+    var btn = this, data = { title: "Donate blood in Malaysia", text: "Find a blood donation centre or this week's mobile drive near you.", url: "https://pdn.gov.my/v2/" };
+    var fallback = function () { copyText(btn, data.url); };
+    try { if (navigator.share) navigator.share(data).catch(fallback); else fallback(); } catch (e) { fallback(); }
+  });
+
+  // ======================================================================
+  // 12d. METHODOLOGY — live tables + table of contents
+  // ======================================================================
+  document.querySelectorAll("[data-asof]").forEach(function (n) { n.textContent = LIVE_BLOOD.asOf; });
+  $("scenarioTable").innerHTML = Object.keys(SCENARIOS).filter(function (k) { return k !== "none"; }).map(function (k) {
+    var sc = SCENARIOS[k];
+    var w = sc.weights === "all" ? "All states (1.0)" : Object.keys(sc.weights).map(function (s) { return short(s) + " (" + sc.weights[s] + ")"; }).join(", ");
+    return '<tr><td><b style="color:var(--ink)">' + sc.label + '</b></td><td class="mono">+' + Math.round(sc.icu * 100) + '%</td><td class="mono">+' + Math.round(sc.blood * 100) + '%</td><td class="mono">−' + Math.round(sc.collect * 100) + '%</td><td>' + w + '</td></tr>';
+  }).join("");
+  (function () {
+    var toc = $("methodToc");
+    document.querySelectorAll(".method h2").forEach(function (h, i) {
+      h.id = h.id || "m-" + i;
+      var li = document.createElement("li");
+      var b = document.createElement("button");
+      b.type = "button"; b.className = "text-left hover:underline"; b.textContent = h.textContent;
+      b.addEventListener("click", function () { h.scrollIntoView({ behavior: "smooth", block: "start" }); });
+      li.appendChild(b); toc.appendChild(li);
+    });
+  })();
+
   $("asOf").textContent = LIVE_BLOOD.asOf;
   update();
+  go(location.hash.slice(1) || "dashboard", true);
 })();
 </script>
 </body>
