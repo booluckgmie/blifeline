@@ -3,7 +3,7 @@
 Attach in this order:
 1. `01-dashboard-surge-simulator.jpg`
 2. `02-icu-vulnerability-hospitals.jpg`
-3. `03-architecture-inspector.jpg`
+3. `03-forecast-recs-table.jpg`
 
 ---
 
