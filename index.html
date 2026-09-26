@@ -2231,13 +2231,16 @@ supply      = supply₀ × (1 − scenario.collect × w)</div>
   var FIXED_VENUES = [
     { name: "Pusat Darah Negara (PDN) — Headquarters", type: "national", state: "W.P. Kuala Lumpur",
       address: "Jalan Tun Razak, 50400 Kuala Lumpur", lat: 3.17314, lng: 101.70646, phone: "03-2613 2688",
-      hours: "Mon–Fri ~7:30am–8pm · Sat–Sun ~8am–4/6pm (call ahead to confirm)" },
+      hours: "Mon–Fri 7:30am–5:30pm · Sat–Sun &amp; public holidays 8am–4pm (call ahead to confirm)" },
     { name: "PDN Donation Suite, Mid Valley Megamall", type: "suite", state: "W.P. Kuala Lumpur",
-      address: "Mid Valley Megamall, Lingkaran Syed Putra, 59200 Kuala Lumpur", lat: 3.1177, lng: 101.6774, phone: null,
-      hours: "Daily ~10am–6pm (call ahead to confirm)" },
-    { name: "Suite Derma Darah PUSPANITA, Putrajaya", type: "suite", state: "W.P. Putrajaya",
-      address: "Puspanitapuri, Presint 10, Putrajaya", lat: 2.928, lng: 101.687, phone: null,
-      hours: "Daily ~10am–6pm (call ahead to confirm)" }
+      address: "T-063, 3rd Floor Mezzanine, Mid Valley Megamall, Lingkaran Syed Putra, 59200 Kuala Lumpur", lat: 3.1181, lng: 101.6774, phone: "03-2280 0349",
+      hours: "Daily 10am–9pm (call ahead to confirm)" },
+    { name: "St John Ambulance Blood Donation Suite, IOI City Mall", type: "suite", state: "W.P. Putrajaya",
+      address: "West Wing, Level P3, IOI City Mall, Lebuh IRC, IOI Resort City, 62502 Putrajaya", lat: 2.9705, lng: 101.7139, phone: null,
+      hours: "Mon–Fri 11am–4pm · Sat–Sun &amp; public holidays 11am–6pm (call ahead to confirm)" },
+    { name: "St John Ambulance Blood Donation Suite, 1 Utama", type: "suite", state: "Selangor",
+      address: "B2, Highstreet, 1 Utama Shopping Centre, 1, Lebuh Bandar Utama, 47800 Petaling Jaya", lat: 3.1482, lng: 101.6158, phone: null,
+      hours: "Daily 11am–7pm (call ahead to confirm)" }
   ].concat(hospitals.map(function (h) {
     return { name: h.name + " — Hospital Blood Bank", type: "hospital", state: h.state,
       address: h.district + ", " + h.state, lat: h.lat, lng: h.lng, phone: null,
