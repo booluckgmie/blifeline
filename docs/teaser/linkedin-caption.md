@@ -9,27 +9,19 @@ Attach in this order:
 
 🩸 Weekend project: BLifeline, where will Malaysia's blood run short first, and which ICUs feel it?
 
-Blood donation appeals are usually national and generic. But shortages hit locally, by state and by blood group, and they hurt most where ICUs are already full.
-
-So I built a prototype that puts the two side by side:
+Blood donation appeals are usually national. But shortages hit locally, by state and blood group, and hurt most where ICUs are already full. So I built a prototype that puts the two side by side:
 
 🔹 Days of blood stock per state and group (A, B, O, AB), projected up to 21 days ahead
-🔹 An ICU Vulnerability Index (0–100) that combines ICU occupancy, ventilator load and projected blood cover
-🔹 A surge simulator: monsoon floods on the East Coast, a Klang Valley mass-casualty event, dengue, a pandemic wave. Drag the severity and watch the map and charts react
-🔹 Recommended actions: targeted donor drives, inter-state transfers (with air freight flagged for Sabah and Sarawak), and ICU surge warnings
-🔹 A "Donate blood" tab linking every critical zone to real PDN and hospital blood bank venues
+🔹 A surge simulator for floods, trauma events and outbreaks
+🔹 Built with Next.js, a FastAPI microservice and a Python/scikit-learn pipeline fed by data.gov.my
 
-One finding surprised me: opening extra ICU surge beds lowers occupancy but raises blood demand, because more patients get treated. Capacity planning and blood planning need to happen together.
+📊 Donation figures are real (data.gov.my, 7-day average). ICU data is illustrative. It's a prototype for exploring the idea, not an operational tool.
 
-🛠️ Under the hood: the prototype is a single HTML file (Tailwind, Chart.js, inline SVG map). The production design is Next.js on the frontend, a FastAPI microservice, and a Python/scikit-learn forecasting pipeline fed by data.gov.my.
+❤️ One donation can help save up to 3 lives. Find a centre or this week's mobile drive at pdn.gov.my. If you're healthy and eligible, book a slot this week and bring a friend.
 
-📊 Data: blood donation figures are real (data.gov.my, rolling 7-day average by state and blood type). ICU occupancy is an illustrative baseline, and days of stock are modelled, because no public hospital-level ICU feed or blood-bank inventory feed exists yet. It's a prototype for exploring the idea, not an operational tool.
+Working in transfusion services or public health in Malaysia? I'd love your feedback.
 
-If you work in transfusion services, public health or health data in Malaysia, I'd love your feedback. What would make this useful in practice?
-
-And if you can, go donate: pdn.gov.my 🩸
-
-#Malaysia #HealthTech #DataScience #OpenData #BloodDonation #PublicHealth #DataVisualization #WeekendProject #FastAPI #NextJS
+#Malaysia #BloodDonation #DermaDarah #HealthTech #DataScience #OpenData #PublicHealth #WeekendProject
 
 ---
 
