@@ -2280,16 +2280,14 @@ supply      = supply₀ × (1 − scenario.collect × w)</div>
     if (!list.length) { $("venues").innerHTML = '<p class="text-sm ink-3">No venues match this filter.</p>'; return; }
     $("venues").innerHTML = list.map(function (v) {
       var need = stateNeed(v.state), t = daysTier(need.d);
-      var maps = "https://www.google.com/maps/search/?api=1&query=" + v.lat + "," + v.lng;
       return '<div class="glass venue" style="border-radius:14px">' +
         '<span class="vtype ' + v.type + '">' + VTYPE[v.type] + '</span>' +
         '<div class="font-bold text-[0.95rem] leading-snug">' + v.name + '</div>' +
-        '<div class="text-xs ink-2 leading-relaxed">' + v.address + '</div>' +
+        '<div class="text-xs ink-2 leading-relaxed select-all">' + v.address + '</div>' +
         '<div class="text-xs ink-3">' + v.hours + (v.dist != null ? ' · <b style="color:var(--ink)">' + fmt(v.dist) + ' km away</b>' : '') + '</div>' +
         '<div class="text-xs inline-flex items-center gap-1.5 flex-wrap">' + pill(t, "Lowest: " + need.g, TIER_ICON[t]) + '<span class="ink-3">' + short(v.state) + ' ' + need.g + ' cover ' + fmt(need.d) + ' d by day ' + sim.horizon + '</span></div>' +
-        '<div class="flex gap-2 flex-wrap mt-1"><a class="link-chip" href="' + maps + '" target="_blank" rel="noopener"><i class="fa-solid fa-diamond-turn-right"></i>Directions</a>' +
-        (v.phone ? '<span class="mono text-xs self-center select-all">' + v.phone + '</span><button type="button" class="link-chip" data-copy="' + v.phone + '"><i class="fa-regular fa-copy"></i><span>Copy number</span></button>' : '') +
-        '</div></div>';
+        (v.phone ? '<div class="flex gap-2 flex-wrap mt-1"><span class="mono text-xs self-center select-all">' + v.phone + '</span><button type="button" class="link-chip" data-copy="' + v.phone + '"><i class="fa-regular fa-copy"></i><span>Copy number</span></button></div>' : '') +
+        '</div>';
     }).join("");
   }
   $("locateBtn").addEventListener("click", function () {
