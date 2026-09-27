@@ -29,3 +29,35 @@ Working in transfusion services or public health in Malaysia? I'd love your feed
 ## Short version (for X / Threads)
 
 Weekend build: BLifeline 🩸 maps Malaysia's blood stock (real data.gov.my donations) against ICU pressure, with a surge simulator for floods, trauma events and outbreaks. Prototype: ICU data is illustrative and stock is modelled. Feedback welcome. Donate at pdn.gov.my
+
+
+---
+
+## Live-link version (posting the real prototype, not just screenshots)
+
+Attach: 1 image (e.g. `01-dashboard-surge-simulator.jpg`) or a short screen recording, plus the link below in the first comment (LinkedIn suppresses reach on posts with an outbound link in the body — drop it in your first comment instead for better distribution, or accept the trade-off and put it in the post).
+
+🩸 Weekend project, now live: BLifeline, where will Malaysia's blood run short first, and which ICUs feel it?
+
+Blood donation appeals are usually national. But shortages hit locally, by state and blood group, and hurt most where ICUs are already full. So I built a prototype that puts the two side by side:
+
+🔹 Days of blood stock per state and group (A, B, O, AB), projected up to 21 days ahead
+🔹 An ICU Vulnerability Index and a real hospital map (18 major state hospitals)
+🔹 A surge simulator for floods, trauma events and outbreaks
+🔹 A live directory of real blood donation venues, so seeing a shortage and acting on it are one click apart
+
+📊 Donation figures are real (data.gov.my, 7-day average). ICU data is illustrative and days of stock are modelled, so it's a prototype for exploring the idea, not an operational tool. Full methodology is on the site.
+
+👉 Try it: blifeline.vercel.app
+
+❤️ And if you're eligible, go further than clicking around: book a real donation slot at pdn.gov.my. One donation can help save up to 3 lives.
+
+Feedback from anyone in transfusion services, public health or health data in Malaysia is very welcome; this is a prototype and I'd love to know what would make it genuinely useful.
+
+#Malaysia #BloodDonation #DermaDarah #HealthTech #DataScience #OpenData #PublicHealth #WeekendProject
+
+---
+
+## Live-link short version (for X / Threads)
+
+BLifeline is live 🩸 blifeline.vercel.app — Malaysia's blood stock (real data.gov.my donations) vs. ICU pressure, per state and blood group, with a surge simulator and a real donation-venue directory. Prototype: ICU data is illustrative, stock is modelled. Feedback welcome.
