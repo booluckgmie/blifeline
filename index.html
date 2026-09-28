@@ -277,11 +277,11 @@
           </div>
           <div class="min-w-0">
             <div class="display text-lg font-bold leading-tight">BLifeline <span class="ink-3 font-medium">· Malaysia</span></div>
-            <div class="text-xs ink-3 leading-snug">Blood supply live from data.gov.my, as of <span class="mono ink-2" id="asOf"></span> · ICU/ventilator: illustrative baseline (<a href="#methodology" class="underline">see Methodology</a>)</div>
+            <div class="text-xs ink-3 leading-snug" id="dataSubtitle">Blood supply from data.gov.my, as of <span class="mono ink-2" id="asOf"></span> · ICU/ventilator: illustrative baseline (<a href="#methodology" class="underline">see Methodology</a>)</div>
           </div>
         </div>
         <div class="flex items-center gap-2 flex-wrap">
-          <span class="hidden md:inline-flex items-center gap-2 text-xs ink-3 mr-1"><span class="w-2 h-2 rounded-full" style="background: var(--accent); box-shadow: 0 0 10px var(--accent);"></span>Model running in-browser</span>
+          <span class="hidden md:inline-flex items-center gap-2 text-xs ink-3 mr-1" id="freshBadge" title="Checking data.gov.my for a fresher snapshot…"><span class="w-2 h-2 rounded-full" id="freshDot" style="background: var(--ink-3);"></span><span id="freshLabel">Checking for live data…</span></span>
           <button class="btn" id="openArch" type="button"><i class="fa-solid fa-diagram-project"></i><span>Architecture</span></button>
         </div>
       </div>
@@ -594,7 +594,7 @@
       <div class="scroll-x">
         <table class="src">
           <tr><th>Dataset</th><th>Status in this app</th><th>Source</th></tr>
-          <tr><td>Blood donations by state &amp; blood type</td><td><b style="color:var(--healthy)">Real</b>, fetched at build time, rolling 7-day average (as of <span class="mono" data-asof></span>)</td><td><code>storage.data.gov.my/healthcare/blood_donations_state.parquet</code></td></tr>
+          <tr><td>Blood donations by state &amp; blood type</td><td><b style="color:var(--healthy)">Real</b>, rolling 7-day average, as of <span class="mono" data-asof></span>. Fetched live on page load via <code>/api/blood-stock</code>, which re-parses this same source file server-side; a baked-in snapshot is shown until that resolves and stays if it fails (see the badge in the header).</td><td><code>storage.data.gov.my/healthcare/blood_donations_state.parquet</code></td></tr>
           <tr><td>ICU / ventilator occupancy</td><td>Illustrative baseline (state-level 2024 snapshot + per-hospital jitter)</td><td>Public hospital-bed-utilisation dashboard, data.moh.gov.my</td></tr>
           <tr><td>Hospital facility list (name, district, lat/lng, beds)</td><td>Sample of 18 major MoH state hospitals</td><td>Assumed reference file. No public facility-level GPS registry is confirmed available.</td></tr>
           <tr><td>Days of stock</td><td><b style="color:var(--low)">Modelled</b> from donations, ICU pressure and the ABO benchmark</td><td>No public blood-bank inventory feed exists; see the stock-flow model below</td></tr>
@@ -742,8 +742,14 @@ supply      = supply₀ × (1 − scenario.collect × w)</div>
   // ======================================================================
   // 1. DATA
   // ======================================================================
-  // Real: rolling 7-day average daily donations by state and group,
-  // from https://storage.data.gov.my/healthcare/blood_donations_state.parquet
+  // Real, but a frozen snapshot: rolling 7-day average daily donations by
+  // state and group, read from data.gov.my's blood_donations_state parquet
+  // at the time this page was written. Used for the very first paint so the
+  // dashboard never shows a blank state — /api/blood-stock (a serverless
+  // function that re-fetches and re-aggregates that same source file) then
+  // overwrites this with the real current numbers; see fetchLiveBloodData()
+  // near the end of this script. If that fetch fails, this snapshot is what
+  // stays on screen, clearly labelled as cached rather than live.
   var LIVE_BLOOD = {
     asOf: "2026-09-23",
     states: {
@@ -1006,6 +1012,28 @@ supply      = supply₀ × (1 − scenario.collect × w)</div>
   function median(arr) { var a = arr.slice().sort(function (x, y) { return x - y; }); return a[Math.floor(a.length / 2)]; }
   var ICU_CUT = median(hospitals.map(function (h) { return h.icu0; }));
   var BLOOD_CUT = median(hospitals.map(function (h) { return h.blood0; }));
+
+  // Re-derives each hospital's blood0 (gravity-weighted share of its
+  // state's pool) and mostNeeded from the current LIVE_BLOOD, and
+  // re-cuts BLOOD_CUT — called once at boot and again whenever
+  // fetchLiveBloodData() replaces LIVE_BLOOD with a fresh fetch. icu0/vent0
+  // are jittered from STATE_ICU_BASE only, not from blood data, so they're
+  // left untouched (re-jittering would just replay the seeded PRNG).
+  function refreshHospitalBlood() {
+    HOSPITALS_RAW.forEach(function (row, idx) {
+      var state = row[1];
+      var totalG = byStateRaw[state].reduce(function (s, h2) { return s + gravityOf(h2); }, 0);
+      var share = gravityOf(row) / totalG;
+      var b = LIVE_BLOOD.states[state];
+      var total = GROUPS.reduce(function (s, g) { return s + b[g]; }, 0);
+      var mostNeeded = "O", best = -Infinity;
+      GROUPS.forEach(function (g) { var gap = BENCH[g] - b[g] / total; if (gap > best) { best = gap; mostNeeded = g; } });
+      hospitals[idx].blood0 = share * total;
+      hospitals[idx].mostNeeded = mostNeeded;
+    });
+    BLOOD_CUT = median(hospitals.map(function (h) { return h.blood0; }));
+  }
+
   var Q_LABEL = { critical: "Critical zone", stable: "High demand", watch: "Watch", healthy: "Healthy" };
   var Q_PILL = { critical: "pill-critical", stable: "pill-low", watch: "pill-adequate", healthy: "pill-healthy" };
   var Q_COLOR = { critical: COLORS.critical, stable: COLORS.low, watch: COLORS.adequate, healthy: COLORS.healthy };
@@ -2340,9 +2368,64 @@ supply      = supply₀ × (1 − scenario.collect × w)</div>
     });
   })();
 
+  // ======================================================================
+  // 13. LIVE DATA FETCH — replaces the baked-in snapshot with a fresh
+  // aggregate from /api/blood-stock (a Vercel serverless function that
+  // fetches and re-aggregates data.gov.my's own blood_donations_state
+  // parquet). Runs once after first paint; the dashboard is fully usable
+  // on the snapshot alone if this fails or the endpoint isn't deployed
+  // (e.g. a plain static preview of this file).
+  // ======================================================================
+  function setFreshBadge(state, label, title) {
+    var colors = { checking: "var(--ink-3)", live: "var(--healthy)", cached: "var(--low)", error: "var(--critical)" };
+    $("freshDot").style.background = colors[state] || colors.checking;
+    $("freshDot").style.boxShadow = state === "live" ? "0 0 10px var(--healthy)" : "none";
+    $("freshLabel").textContent = label;
+    $("freshBadge").title = title || "";
+  }
+  function setSubtitle(word, note) {
+    $("dataSubtitle").innerHTML = word + ' data.gov.my, as of <span class="mono ink-2" id="asOf">' + LIVE_BLOOD.asOf + '</span>' +
+      (note ? " " + note : "") + ' · ICU/ventilator: illustrative baseline (<a href="#methodology" class="underline">see Methodology</a>)';
+  }
+  function refreshAsOfDisplays() {
+    var el = $("asOf"); if (el) el.textContent = LIVE_BLOOD.asOf;
+    document.querySelectorAll("[data-asof]").forEach(function (n) { n.textContent = LIVE_BLOOD.asOf; });
+  }
+
+  function fetchLiveBloodData() {
+    if (!window.fetch) { setFreshBadge("cached", "Cached snapshot", "This browser can't fetch live data. Showing the built-in snapshot."); return; }
+    var controller = ("AbortController" in window) ? new AbortController() : null;
+    var timeout = controller ? setTimeout(function () { controller.abort(); }, 10000) : null;
+    fetch("/api/blood-stock", { signal: controller ? controller.signal : undefined })
+      .then(function (r) {
+        if (timeout) clearTimeout(timeout);
+        if (!r.ok) throw new Error("HTTP " + r.status);
+        return r.json();
+      })
+      .then(function (data) {
+        var states = data && data.states;
+        var ok = data && typeof data.asOf === "string" && states && Object.keys(states).length >= 13 &&
+          STATES.every(function (s) { return states[s] && GROUPS.every(function (g) { return typeof states[s][g] === "number"; }); });
+        if (!ok) throw new Error("unexpected response shape");
+
+        LIVE_BLOOD = { asOf: data.asOf, states: states };
+        refreshHospitalBlood();
+        runModel();
+        update();
+        refreshAsOfDisplays();
+        setSubtitle("Blood supply live from", null);
+        setFreshBadge("live", "Live data", "Fetched just now from data.gov.my via /api/blood-stock (as of " + data.asOf + ").");
+      })
+      .catch(function (err) {
+        setSubtitle("Blood supply — cached snapshot from", "(live fetch unavailable)");
+        setFreshBadge("cached", "Cached snapshot", "Live fetch failed (" + (err && err.message ? err.message : "unknown error") + "); showing the built-in snapshot as of " + LIVE_BLOOD.asOf + ".");
+      });
+  }
+
   $("asOf").textContent = LIVE_BLOOD.asOf;
   update();
   go(location.hash.slice(1) || "dashboard", true);
+  fetchLiveBloodData();
 })();
 </script>
 </body>

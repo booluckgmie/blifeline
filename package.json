@@ -1,0 +1,11 @@
+{
+  "name": "blifeline",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "description": "BLifeline Malaysia — blood supply x ICU vulnerability dashboard. Static index.html plus one Vercel serverless function (api/blood-stock.js) that fetches and aggregates the live data.gov.my blood donations dataset.",
+  "dependencies": {
+    "hyparquet": "1.31.2",
+    "hyparquet-compressors": "1.1.2"
+  }
+}
