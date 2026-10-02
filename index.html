@@ -390,7 +390,7 @@
         <input type="range" class="rng" id="surgeRng" min="0" max="50" step="5" value="0">
         <p class="text-xs ink-3 leading-relaxed">Extra ICU beds opened. Occupancy drops, but more patients treated means more transfusions.</p>
         <div class="flex items-center justify-between text-sm mt-1"><label for="horizonRng" class="font-semibold flex items-center gap-2"><i class="fa-solid fa-calendar-days ink-3"></i>Forecast horizon</label><span class="mono ink-2 text-xs" id="horizonVal"></span></div>
-        <input type="range" class="rng" id="horizonRng" min="3" max="21" step="1" value="7">
+        <input type="range" class="rng" id="horizonRng" min="3" max="28" step="1" value="7">
       </div>
 
       <div class="glass-flat p-3 grid grid-cols-3 gap-2 text-center" id="simDelta"></div>
@@ -527,7 +527,7 @@
   </section>
 
   <footer class="mt-6 text-xs ink-3 leading-relaxed max-w-4xl">
-    <p><b class="ink-2">Data.</b> Blood donation figures are real, taken from data.gov.my's public <span class="mono">blood_donations_state</span> dataset (rolling 7-day average by state and blood type). Perlis, W.P. Putrajaya and W.P. Labuan aren't reported separately in that source, so they use a scaled-down proxy of their nearest tracked state. ICU/ventilator occupancy is an illustrative baseline, not a live feed, modelled on published 2024 state-level hospital bed utilisation ranges. No public daily hospital-level ICU/ventilator dataset with facility GPS is confirmed to exist. The map shows Malaysia's actual coastline (Natural Earth 1:50m), projected inline with no external map tiles.</p>
+    <p><b class="ink-2">Data.</b> Blood donation figures are real, taken from data.gov.my's public <span class="mono">blood_donations_state</span> dataset (rolling 7-day average by state and blood type). Perlis, W.P. Putrajaya and W.P. Labuan aren't reported separately in that source, so their figures are estimates: a scaled-down proxy of their nearest tracked state (see Limitations in the Methodology tab). ICU/ventilator occupancy is an illustrative baseline, not a live feed, modelled on published 2024 state-level hospital bed utilisation ranges. No public daily hospital-level ICU/ventilator dataset with facility GPS is confirmed to exist. The map shows Malaysia's actual coastline (Natural Earth 1:50m), projected inline with no external map tiles.</p>
     <p class="mt-2"><b class="ink-2">Model.</b> Days of stock are modelled, not measured inventory. Treat them as planning signals. Full details are on the <a href="#methodology" class="underline ink-2">Methodology &amp; data pipeline</a> tab; the production stack is in <button type="button" class="underline ink-2" id="footArch">Architecture</button>.</p>
   </footer>
 </section>
@@ -588,7 +588,7 @@
   <div class="pt-6 grid grid-cols-1 lg:grid-cols-12 gap-6">
     <article class="method lg:col-span-9">
       <h2>What this dashboard does</h2>
-      <p>It maps regional blood supply against ICU demand to surface localized <b>critical zones</b>: hospitals where high ICU pressure coincides with a thin extrapolated blood supply. Donation campaigns and blood-bank logistics can then be aimed at the places and blood types that need them most, instead of relying on general awareness appeals. The surge simulator lets planners test how floods, trauma events, outbreaks and extra ICU beds would move those numbers over the next 3 to 21 days.</p>
+      <p>It maps regional blood supply against ICU demand to surface localized <b>critical zones</b>: hospitals where high ICU pressure coincides with a thin extrapolated blood supply. Donation campaigns and blood-bank logistics can then be aimed at the places and blood types that need them most, instead of relying on general awareness appeals. The surge simulator lets planners test how floods, trauma events, outbreaks and extra ICU beds would move those numbers over the next 3 to 28 days — long enough to run a full ~4-week Ramadan dip end to end.</p>
 
       <h2>Data sources</h2>
       <div class="scroll-x">
@@ -649,7 +649,7 @@ most_needed_type = type with the largest gap</div>
       <div class="formula">supply₀(s,g)   = 7-day avg donations/day
 demand₀(s,g)   = Σ_g supply₀(s,g) × benchmark(g) × icu_base(s) / 65
 inventory(0)   = 7 × supply₀(s,g)                       # one week on the shelf
-inventory(t+1) = clamp(inventory(t) + supply − demand, 0, 21 × demand₀)
+inventory(t+1) = clamp(inventory(t) + supply − demand, 0, 28 × demand₀)
 days_of_stock  = inventory(t) / demand</div>
       <p>Demand is anchored to each state's own collection volume (collection networks are sized to local usage), raised where ICU pressure is above the 65% reference and shifted by the ABO benchmark. Status bands: <b style="color:var(--critical)">critical &lt; 3 d</b>, <b style="color:var(--low)">low 3–5 d</b>, <b style="color:var(--adequate)">adequate 5–7 d</b>, <b style="color:var(--healthy)">healthy ≥ 7 d</b>.</p>
 
@@ -692,8 +692,8 @@ supply      = supply₀ × (1 − scenario.collect × w)</div>
       <ul>
         <li>Days of stock are modelled from donation flow, not read from blood-bank inventory. Rh factor, component type (red cells, platelets, plasma) and expiry are not modelled.</li>
         <li>ICU occupancy is an illustrative baseline, so hospital rankings show the method working, not today's real ward state.</li>
-        <li>Proxy states (Perlis, Putrajaya, Labuan) inherit their neighbour's blood-type mix.</li>
-        <li>Scenario parameters are planning assumptions, not calibrated epidemiological estimates.</li>
+        <li><b>Perlis, W.P. Putrajaya and W.P. Labuan are estimates, not reported figures.</b> They're a fixed share of their nearest tracked state (Kedah, Selangor and Sabah respectively — 15%, 5% and 3%), applied equally to every blood group. Group O's share of donations varies from about 40% to 48% across states, so a proxy state's true type mix can differ from its parent's; treat these three states' per-group numbers, and anything downstream of them (most-needed type, donor alerts), as approximate.</li>
+        <li>Scenario parameters are planning assumptions, not calibrated epidemiological estimates. The Ramadan donor dip is the one exception: its ~30% figure (95% range −36% to −24%, narrower check −32%) comes directly from the donation data.</li>
       </ul>
     </article>
     <aside class="lg:col-span-3 hidden lg:block">
@@ -822,7 +822,7 @@ supply      = supply₀ × (1 − scenario.collect × w)</div>
   var GCOLOR = { A: "#3987e5", B: "#d95926", O: "#199e70", AB: "#9085e9" };
   var GDASH = { A: [], B: [6, 4], O: [2, 3], AB: [10, 3, 2, 3] };
   var BENCH = { O: 0.44, A: 0.26, B: 0.23, AB: 0.07 };
-  var BUFFER_DAYS = 7, TARGET = 7, CRIT = 3, LOW = 5, MAX_DAYS = 21, ICU_REF = 65;
+  var BUFFER_DAYS = 7, TARGET = 7, CRIT = 3, LOW = 5, MAX_DAYS = 28, ICU_REF = 65;
   var STATES = Object.keys(LIVE_BLOOD.states).sort();
 
   var COLORS = {
@@ -844,6 +844,9 @@ supply      = supply₀ × (1 − scenario.collect × w)</div>
   // collect: fraction of donation collection lost (closed sites, deferrals).
   var SCENARIOS = {
     none: { label: "None (baseline)", icu: 0, blood: 0, collect: 0, weights: {}, note: "No disaster applied. The forecast still runs: states whose demand outpaces collection drift down." },
+    ramadan: { label: "Ramadan donor dip: nationwide", icu: 0, blood: 0, collect: 0.30,
+      weights: "all",
+      note: "Donor turnout runs lower nationwide through Ramadan, with no change to ICU load or transfusion demand — this is a supply dip, not a disaster. Set severity to 100% for the full ~30% drop (95% range −36% to −24% across recent years; a narrower check gives −32%) and the horizon to about 28 days to run the full ~4-week dip." },
     ecflood: { label: "Monsoon floods: East Coast", icu: 0.35, blood: 0.45, collect: 0.55,
       weights: { "Kelantan": 1, "Terengganu": 1, "Pahang": 0.8, "Johor": 0.35 },
       note: "Northeast-monsoon flooding closes donation sites and cuts roads while trauma and dialysis complications rise." },
