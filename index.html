@@ -5,6 +5,25 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>BLifeline Malaysia</title>
 <meta name="description" content="Blood supply days-of-stock and ICU vulnerability across Malaysian states, with a surge simulator and architecture inspector.">
+<!-- Vercel Web Analytics — plain-HTML integration (no framework here to
+     install @vercel/analytics into). Pageviews are automatic; this page
+     also calls window.va('event', {...}) for a few custom events, see
+     vaEvent() in the main script. No-ops harmlessly until Web Analytics
+     is enabled for this project (Vercel dashboard → Analytics → Enable)
+     and the script below 404s, which the inline shim tolerates. -->
+<script>
+  window.va = window.va || function () { (window.vaq = window.vaq || []).push(arguments); };
+  // Until Web Analytics is enabled for this project (one-time dashboard
+  // toggle — see the Site analytics tab), this script 404s with a plain-
+  // text body and no nosniff header, which browsers try to execute as JS
+  // and report as a syntax error. That failure is expected and harmless,
+  // so it's the one thing suppressed here — everything else still reaches
+  // the console.
+  window.addEventListener("error", function (e) {
+    if (e && e.filename && e.filename.indexOf("/_vercel/insights/script.js") !== -1) e.preventDefault();
+  });
+</script>
+<script defer src="/_vercel/insights/script.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Sora:wght@500;600;700&family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap">
@@ -289,6 +308,7 @@
         <a href="#dashboard" data-view="dashboard" aria-current="page"><i class="fa-solid fa-gauge-high"></i>Dashboard</a>
         <a href="#donate" data-view="donate"><i class="fa-solid fa-hand-holding-droplet"></i>Donate blood</a>
         <a href="#methodology" data-view="methodology"><i class="fa-solid fa-book-open"></i>Methodology &amp; data pipeline</a>
+        <a href="#analytics" data-view="analytics"><i class="fa-solid fa-chart-line"></i>Site analytics</a>
       </nav>
     </div>
   </div>
@@ -704,6 +724,66 @@ supply      = supply₀ × (1 − scenario.collect × w)</div>
     </aside>
   </div>
 </section>
+
+<!-- ============================ SITE ANALYTICS VIEW ============================ -->
+<section id="view-analytics" data-view-panel="analytics" hidden>
+  <div class="pt-6 flex flex-col gap-5 max-w-6xl">
+    <div class="max-w-3xl">
+      <div class="eyebrow mb-2">Site analytics</div>
+      <h1 class="display text-2xl md:text-3xl font-bold leading-tight">Who's using BLifeline, and are they reaching the donate flow?</h1>
+      <p class="ink-2 text-sm mt-2 leading-relaxed">Traffic from Vercel Web Analytics, plus four events this page reports itself so traffic numbers connect back to what the dashboard is for: opening the Donate tab, running a surge scenario, opening a hospital's detail card, and opening the Architecture inspector.</p>
+    </div>
+
+    <div id="analyticsBanner"></div>
+
+    <div id="analyticsContent" hidden>
+      <section id="analyticsKpis" class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4" aria-label="Traffic summary"></section>
+
+      <article class="glass p-4 md:p-5 flex flex-col gap-3 mb-4">
+        <div class="flex items-start justify-between gap-3 flex-wrap">
+          <div>
+            <div class="eyebrow">Traffic</div>
+            <h2 class="display text-lg font-semibold mt-1">Visits per day</h2>
+            <p class="text-xs ink-3 mt-1" id="analyticsTrendSub">Last 30 days, production only.</p>
+          </div>
+        </div>
+        <div class="chart-box" style="height: 260px;"><canvas id="analyticsTrendChart" role="img" aria-label="Visits per day over the last 30 days"></canvas></div>
+      </article>
+
+      <section class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 mb-4">
+        <article class="glass p-4 flex flex-col gap-2">
+          <div class="eyebrow">Top pages</div>
+          <div id="analyticsTopPages" class="flex flex-col gap-1.5 text-sm"></div>
+        </article>
+        <article class="glass p-4 flex flex-col gap-2">
+          <div class="eyebrow">Top referrers</div>
+          <div id="analyticsTopReferrers" class="flex flex-col gap-1.5 text-sm"></div>
+        </article>
+        <article class="glass p-4 flex flex-col gap-2">
+          <div class="eyebrow">Top countries</div>
+          <div id="analyticsTopCountries" class="flex flex-col gap-1.5 text-sm"></div>
+        </article>
+        <article class="glass p-4 flex flex-col gap-2">
+          <div class="eyebrow">Devices</div>
+          <div id="analyticsDevices" class="flex flex-col gap-1.5 text-sm"></div>
+        </article>
+      </section>
+
+      <article class="glass p-4 md:p-5 flex flex-col gap-3">
+        <div>
+          <div class="eyebrow">Engagement</div>
+          <h2 class="display text-lg font-semibold mt-1">Beyond pageviews</h2>
+          <p class="text-xs ink-3 mt-1">Counts since Web Analytics was enabled, not just the last 30 days.</p>
+        </div>
+        <div id="analyticsEvents" class="grid grid-cols-2 md:grid-cols-4 gap-3"></div>
+      </article>
+    </div>
+
+    <div class="callout" id="analyticsSetupNote">
+      <b>One-time setup, done outside this page.</b> Vercel Web Analytics is a project setting with no public API to flip it, so it's enabled once in the dashboard: <a href="https://vercel.com/my-ketapang/blifeline/analytics" target="_blank" rel="noopener" style="color:var(--accent)">vercel.com/my-ketapang/blifeline → Analytics → Enable</a>. This section then needs a read-only <span class="mono">VERCEL_TOKEN</span> added as a Project → Environment Variable so <span class="mono">/api/site-analytics</span> can query it server-side; see the README for the two-minute walkthrough. Until both are done, this page shows the state below rather than guessing at numbers.
+    </div>
+  </div>
+</section>
 </main>
 
 <!-- ============================ HOSPITAL DETAIL SHEET ============================ -->
@@ -1056,6 +1136,12 @@ supply      = supply₀ × (1 − scenario.collect × w)</div>
   // 5. HELPERS
   // ======================================================================
   function $(id) { return document.getElementById(id); }
+  // Reports a custom Vercel Web Analytics event. No-ops safely if the
+  // tracking script hasn't loaded (Web Analytics not yet enabled for this
+  // project, or blocked by the viewer) — window.va is always at least the
+  // inline queueing shim in <head>, which just drops events on the floor
+  // until the real script attaches.
+  function vaEvent(name, data) { try { window.va && window.va("event", { name: name, data: data || {} }); } catch (e) {} }
   function fmt(n, d) { return (d == null ? n.toFixed(1) : n.toFixed(d)); }
   function fmtInt(n) { return Math.round(n).toLocaleString("en-MY"); }
   function pill(tier, text, icon) { return '<span class="pill pill-' + tier + '"><i class="fa-solid ' + (icon || TIER_ICON[tier]) + '"></i>' + text + '</span>'; }
@@ -1718,6 +1804,7 @@ supply      = supply₀ × (1 − scenario.collect × w)</div>
   var sheet = $("sheet"), sheetBack = $("sheetBack"), sheetH = null, sheetReturn = null;
   function openDetail(h, refresh) {
     if (!sheetH) sheetReturn = document.activeElement;
+    if (!refresh) vaEvent("open_hospital_detail", { hospital: h.name, state: h.state });
     sheetH = h;
     var n = hospitalNow(h), r = results[h.state], g = r.groups[h.mostNeeded];
     var t = daysTier(g.daysH);
@@ -1875,7 +1962,11 @@ supply      = supply₀ × (1 − scenario.collect × w)</div>
       cell("Demand Δ", (dDem >= 0 ? "+" : "") + fmt(dDem, 0) + "%", dDem <= 0);
   }
 
-  scenarioSel.addEventListener("change", function () { sim.scenario = this.value; update(); });
+  scenarioSel.addEventListener("change", function () {
+    sim.scenario = this.value;
+    if (sim.scenario !== "none") vaEvent("run_scenario", { scenario: sim.scenario });
+    update();
+  });
   regionSel.addEventListener("change", function () { sim.region = this.value; update(); });
   $("sevRng").addEventListener("input", function () { sim.severity = +this.value; update(); });
   $("spikeRng").addEventListener("input", function () { sim.spike = +this.value; update(); });
@@ -2169,6 +2260,7 @@ supply      = supply₀ × (1 − scenario.collect × w)</div>
 
   var archModal = $("archModal"), lastFocus = null;
   function openArch() {
+    vaEvent("open_architecture", {});
     lastFocus = document.activeElement;
     archModal.hidden = false;
     document.body.style.overflow = "hidden";
@@ -2236,7 +2328,7 @@ supply      = supply₀ × (1 − scenario.collect × w)</div>
   // ======================================================================
   // 12b. VIEWS — Dashboard / Donate / Methodology (plain #hash deep links)
   // ======================================================================
-  var VIEWS = ["dashboard", "donate", "methodology"];
+  var VIEWS = ["dashboard", "donate", "methodology", "analytics"];
   function go(view, noScroll) {
     if (VIEWS.indexOf(view) < 0) view = "dashboard";
     document.querySelectorAll("[data-view-panel]").forEach(function (p) { p.hidden = p.dataset.viewPanel !== view; });
@@ -2244,7 +2336,8 @@ supply      = supply₀ × (1 − scenario.collect × w)</div>
       if (a.dataset.view === view) a.setAttribute("aria-current", "page"); else a.removeAttribute("aria-current");
     });
     if (location.hash.slice(1) !== view) { try { history.replaceState(null, "", "#" + view); } catch (e) {} }
-    if (view === "donate" && results[STATES[0]]) { renderUrgent(); renderVenues(); }
+    if (view === "donate") { vaEvent("view_donate_tab", {}); if (results[STATES[0]]) { renderUrgent(); renderVenues(); } }
+    if (view === "analytics") loadSiteAnalytics();
     if (!noScroll) window.scrollTo(0, 0);
   }
   document.addEventListener("click", function (e) {
@@ -2422,6 +2515,106 @@ supply      = supply₀ × (1 − scenario.collect × w)</div>
       .catch(function (err) {
         setSubtitle("Blood supply — cached snapshot from", "(live fetch unavailable)");
         setFreshBadge("cached", "Cached snapshot", "Live fetch failed (" + (err && err.message ? err.message : "unknown error") + "); showing the built-in snapshot as of " + LIVE_BLOOD.asOf + ".");
+      });
+  }
+
+
+  // ======================================================================
+  // 14. SITE ANALYTICS — reads /api/site-analytics (Vercel Web Analytics,
+  // queried server-side). Loaded lazily, once, the first time this tab is
+  // opened. Three honest states: not configured, configured with no data
+  // yet, or populated — never a guessed number.
+  // ======================================================================
+  var analyticsChart = null, analyticsLoaded = false, analyticsLoading = false;
+
+  function analyticsBanner(kind, title, body) {
+    var icon = kind === "error" ? "fa-triangle-exclamation" : kind === "empty" ? "fa-clock" : "fa-circle-info";
+    var color = kind === "error" ? "var(--critical)" : kind === "empty" ? "var(--low)" : "var(--accent)";
+    $("analyticsBanner").innerHTML =
+      '<div class="glass-flat p-3 flex items-start gap-2.5" style="border-color:' + color + '66">' +
+      '<i class="fa-solid ' + icon + ' mt-0.5" style="color:' + color + '"></i>' +
+      '<div class="text-sm"><div class="font-bold">' + title + '</div><div class="ink-2 text-xs mt-0.5 leading-relaxed">' + body + '</div></div></div>';
+  }
+  function analyticsListRows(items, labelKey, valueKey) {
+    if (!items || !items.length) return '<p class="text-xs ink-3">No data yet.</p>';
+    var max = Math.max.apply(null, items.map(function (i) { return i[valueKey] || 0; }));
+    return items.map(function (i) {
+      var v = i[valueKey] || 0, pct = max ? Math.round((v / max) * 100) : 0;
+      var label = i[labelKey] == null || i[labelKey] === "" ? "(none)" : String(i[labelKey]);
+      return '<div class="flex items-center justify-between gap-2"><span class="truncate" style="max-width:62%" title="' + label.replace(/"/g, "&quot;") + '">' + label + '</span>' +
+        '<span class="flex items-center gap-2 shrink-0"><span class="bar-mini" style="width:52px"><i style="width:' + pct + '%;background:var(--accent)"></i></span><span class="mono ink-2 text-xs">' + fmtInt(v) + '</span></span></div>';
+    }).join("");
+  }
+  function renderSiteAnalytics(d) {
+    $("analyticsBanner").innerHTML = "";
+    $("analyticsContent").hidden = false;
+    var kpis = [
+      { label: "Visits · 30d", icon: "fa-eye", val: fmtInt(d.totals.visits) },
+      { label: "Top page", icon: "fa-file", val: d.topPages[0] ? short(d.topPages[0].requestPath || "/") : "—", mono: false, small: true },
+      { label: "Top country", icon: "fa-globe", val: d.topCountries[0] ? d.topCountries[0].country : "—" },
+      { label: "Engagement events", icon: "fa-hand-pointer", val: fmtInt(d.events.total) }
+    ];
+    $("analyticsKpis").innerHTML = kpis.map(function (k) {
+      return '<div class="glass p-3.5 flex flex-col gap-1.5" style="border-radius:14px"><div class="flex items-center justify-between gap-2"><span class="eyebrow" style="letter-spacing:0.08em">' + k.label + '</span><i class="fa-solid ' + k.icon + ' text-xs ink-3"></i></div>' +
+        '<div class="kpi-val" style="' + (k.small ? "font-size:1.05rem;" : "") + '">' + k.val + '</div></div>';
+    }).join("");
+
+    var labels = d.trend.map(function (t) { return t.date.indexOf("-") > 0 ? t.date.slice(5) : t.date; });
+    var series = d.trend.map(function (t) { return t.visits; });
+    if (analyticsChart) analyticsChart.destroy();
+    analyticsChart = new Chart($("analyticsTrendChart"), {
+      type: "line",
+      data: { labels: labels, datasets: [{ label: "Visits", data: series, borderColor: COLORS.accent, backgroundColor: alpha(COLORS.accent, 0.12), fill: "origin", borderWidth: 2, tension: 0.25 }] },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        scales: {
+          x: { grid: { color: COLORS.grid }, ticks: { color: COLORS.ink3, maxTicksLimit: 10 } },
+          y: { min: 0, grid: { color: COLORS.grid }, ticks: { color: COLORS.ink3, precision: 0 } }
+        },
+        plugins: { legend: { display: false }, tooltip: Object.assign({}, tooltipStyle, { callbacks: { label: function (c) { return " " + c.parsed.y + " visits"; } } }) },
+        elements: { point: { radius: 0, hoverRadius: 4, hitRadius: 8 } }
+      }
+    });
+
+    $("analyticsTopPages").innerHTML = analyticsListRows(d.topPages, "requestPath", "visits");
+    $("analyticsTopReferrers").innerHTML = analyticsListRows(d.topReferrers, "referrerHostname", "visits");
+    $("analyticsTopCountries").innerHTML = analyticsListRows(d.topCountries, "country", "visits");
+    $("analyticsDevices").innerHTML = analyticsListRows(d.devices, "deviceType", "visits");
+
+    var evLabel = { view_donate_tab: "Donate tab opened", run_scenario: "Surge scenario run", open_hospital_detail: "Hospital detail opened", open_architecture: "Architecture opened" };
+    var byName = d.events.byName.length ? d.events.byName : Object.keys(evLabel).map(function (k) { return { eventName: k, count: 0 }; });
+    $("analyticsEvents").innerHTML = byName.map(function (e) {
+      return '<div class="glass-flat p-3 text-center"><div class="kpi-val" style="font-size:1.4rem">' + fmtInt(e.count) + '</div><div class="text-xs ink-2 mt-1">' + (evLabel[e.eventName] || e.eventName) + '</div></div>';
+    }).join("");
+  }
+  function loadSiteAnalytics(force) {
+    if ((analyticsLoaded && !force) || analyticsLoading) return;
+    analyticsLoading = true;
+    analyticsBanner("info", "Loading…", "Querying Vercel Web Analytics for the last 30 days.");
+    fetch("/api/site-analytics")
+      .then(function (r) { return r.json().then(function (body) { return { ok: r.ok, body: body }; }); })
+      .then(function (res) {
+        analyticsLoading = false;
+        var d = res.body;
+        if (!res.ok || !d || d.configured === false) {
+          analyticsLoaded = false;
+          $("analyticsContent").hidden = true;
+          analyticsBanner("info", "Not set up yet", (d && d.reason ? d.reason + " " : "") + "See the setup note below — it's two one-time steps, both outside this codebase.");
+          return;
+        }
+        if (!d.totals || d.totals.visits === 0) {
+          analyticsLoaded = true;
+          renderSiteAnalytics(d);
+          analyticsBanner("empty", "Web Analytics is on, but no visits recorded yet", "Data can take a few minutes to appear after the first visit following setup, and Vercel's free tier only retains a rolling window.");
+          return;
+        }
+        analyticsLoaded = true;
+        renderSiteAnalytics(d);
+      })
+      .catch(function (err) {
+        analyticsLoading = false;
+        analyticsBanner("error", "Couldn't load analytics", (err && err.message ? err.message : "Network error") + ". <button type=\"button\" id=\"analyticsRetry\" class=\"link-chip\" style=\"margin-left:6px\">Retry</button>");
+        var btn = $("analyticsRetry"); if (btn) btn.addEventListener("click", function () { loadSiteAnalytics(true); });
       });
   }
 
